@@ -5,272 +5,314 @@ export const generateStepByStepSolution = (question: string, subject: string): {
   
   // Mathematics Solutions
   if (subject === 'mathematics') {
-    // SOLVE FOR X - Algebraic Equations (FIXED - moved before basic arithmetic)
+    // Solve for x equations - MUST come first before basic arithmetic
     if ((lowerQuestion.includes('solve') && lowerQuestion.includes('x') && lowerQuestion.includes('=')) ||
-        (lowerQuestion.includes('find x') && lowerQuestion.includes('='))) {
+        (lowerQuestion.includes('find') && lowerQuestion.includes('x') && lowerQuestion.includes('='))) {
       
-      // Extract the equation from the question
-      let equation = question.match(/[^a-zA-Z]*[\d\w\s\+\-\*\/\=\(\)\.]+[^a-zA-Z]*/)?.[0]?.trim() || '';
+      // Try to extract the actual equation from the question
+      const equationMatch = question.match(/([0-9]*x\s*[+\-]\s*[0-9]+\s*=\s*[0-9]+)|([0-9]+x\s*=\s*[0-9]+)|(x\s*[+\-]\s*[0-9]+\s*=\s*[0-9]+)/i);
       
-      // Common equation patterns
-      if (lowerQuestion.includes('2x + 5 = 17') || equation.includes('2x + 5 = 17')) {
-        return {
-          steps: [
-            {
-              number: 1,
-              title: "Write down the equation",
-              content: "Start by clearly writing the equation we need to solve.",
-              formula: "2x + 5 = 17"
-            },
-            {
-              number: 2,
-              title: "Subtract 5 from both sides",
-              content: "To isolate the term with x, we subtract 5 from both sides of the equation.",
-              formula: "2x + 5 - 5 = 17 - 5",
-              calculation: "2x = 12"
-            },
-            {
-              number: 3,
-              title: "Divide both sides by 2",
-              content: "Now divide both sides by 2 to solve for x.",
-              formula: "2x ÷ 2 = 12 ÷ 2",
-              calculation: "x = 6"
-            },
-            {
-              number: 4,
-              title: "Check your answer",
-              content: "Substitute x = 6 back into the original equation to verify.",
-              formula: "2(6) + 5 = 17",
-              calculation: "12 + 5 = 17 ✓"
-            }
-          ],
-          keyPoints: [
-            "Always perform the same operation on both sides of the equation",
-            "Work systematically to isolate the variable",
-            "Check your answer by substituting back into the original equation",
-            "Keep your work organized and show each step clearly"
-          ]
-        };
-      }
-      
-      // Pattern: ax + b = c (like 3x + 7 = 22)
-      const simpleLinearMatch = equation.match(/(\d+)x\s*\+\s*(\d+)\s*=\s*(\d+)/) || 
-                               lowerQuestion.match(/(\d+)x\s*\+\s*(\d+)\s*=\s*(\d+)/);
-      if (simpleLinearMatch) {
-        const [, a, b, c] = simpleLinearMatch;
-        const coefficient = parseInt(a);
-        const constant = parseInt(b);
-        const result = parseInt(c);
-        const xValue = (result - constant) / coefficient;
+      if (equationMatch) {
+        const equation = equationMatch[0];
         
-        return {
-          steps: [
-            {
-              number: 1,
-              title: "Write down the equation",
-              content: "Start by clearly writing the equation we need to solve.",
-              formula: `${coefficient}x + ${constant} = ${result}`
-            },
-            {
-              number: 2,
-              title: `Subtract ${constant} from both sides`,
-              content: `To isolate the term with x, we subtract ${constant} from both sides of the equation.`,
-              formula: `${coefficient}x + ${constant} - ${constant} = ${result} - ${constant}`,
-              calculation: `${coefficient}x = ${result - constant}`
-            },
-            {
-              number: 3,
-              title: `Divide both sides by ${coefficient}`,
-              content: `Now divide both sides by ${coefficient} to solve for x.`,
-              formula: `${coefficient}x ÷ ${coefficient} = ${result - constant} ÷ ${coefficient}`,
-              calculation: `x = ${xValue}`
-            },
-            {
-              number: 4,
-              title: "Check your answer",
-              content: `Substitute x = ${xValue} back into the original equation to verify.`,
-              formula: `${coefficient}(${xValue}) + ${constant} = ${result}`,
-              calculation: `${coefficient * xValue + constant} = ${result} ✓`
-            }
-          ],
-          keyPoints: [
-            "Always perform the same operation on both sides of the equation",
-            "Work systematically to isolate the variable",
-            "Check your answer by substituting back into the original equation",
-            "Keep your work organized and show each step clearly"
-          ]
-        };
+        // Parse different equation types
+        if (equation.includes('+')) {
+          // Format: ax + b = c or x + b = c
+          const parts = equation.split('=');
+          const leftSide = parts[0].trim();
+          const rightSide = parseInt(parts[1].trim());
+          
+          if (leftSide.includes('x')) {
+            const xCoeff = leftSide.match(/(\d*)x/)?.[1] || '1';
+            const coefficient = xCoeff === '' ? 1 : parseInt(xCoeff);
+            const constant = parseInt(leftSide.match(/\+\s*(\d+)/)?.[1] || '0');
+            
+            const result = (rightSide - constant) / coefficient;
+            
+            return {
+              steps: [
+                {
+                  number: 1,
+                  title: "Write down the equation",
+                  content: "Start by clearly writing the equation we need to solve.",
+                  formula: equation
+                },
+                {
+                  number: 2,
+                  title: `Subtract ${constant} from both sides`,
+                  content: `To isolate the term with x, we subtract ${constant} from both sides of the equation.`,
+                  formula: `${leftSide} - ${constant} = ${rightSide} - ${constant}`,
+                  calculation: `${coefficient}x = ${rightSide - constant}`
+                },
+                {
+                  number: 3,
+                  title: `Divide both sides by ${coefficient}`,
+                  content: `Now divide both sides by ${coefficient} to solve for x.`,
+                  formula: `${coefficient}x ÷ ${coefficient} = ${rightSide - constant} ÷ ${coefficient}`,
+                  calculation: `x = ${result}`
+                },
+                {
+                  number: 4,
+                  title: "Check your answer",
+                  content: `Substitute x = ${result} back into the original equation to verify.`,
+                  formula: `${coefficient}(${result}) + ${constant} = ${rightSide}`,
+                  calculation: `${coefficient * result + constant} = ${rightSide} ✓`
+                }
+              ],
+              keyPoints: [
+                "Always perform the same operation on both sides of the equation",
+                "Work systematically to isolate the variable",
+                "Check your answer by substituting back into the original equation",
+                "Keep your work organized and show each step clearly"
+              ]
+            };
+          }
+        } else if (equation.includes('-')) {
+          // Handle subtraction equations
+          const parts = equation.split('=');
+          const leftSide = parts[0].trim();
+          const rightSide = parseInt(parts[1].trim());
+          
+          const xCoeff = leftSide.match(/(\d*)x/)?.[1] || '1';
+          const coefficient = xCoeff === '' ? 1 : parseInt(xCoeff);
+          const constant = parseInt(leftSide.match(/-\s*(\d+)/)?.[1] || '0');
+          
+          const result = (rightSide + constant) / coefficient;
+          
+          return {
+            steps: [
+              {
+                number: 1,
+                title: "Write down the equation",
+                content: "Start by clearly writing the equation we need to solve.",
+                formula: equation
+              },
+              {
+                number: 2,
+                title: `Add ${constant} to both sides`,
+                content: `To isolate the term with x, we add ${constant} to both sides of the equation.`,
+                formula: `${leftSide} + ${constant} = ${rightSide} + ${constant}`,
+                calculation: `${coefficient}x = ${rightSide + constant}`
+              },
+              {
+                number: 3,
+                title: `Divide both sides by ${coefficient}`,
+                content: `Now divide both sides by ${coefficient} to solve for x.`,
+                formula: `${coefficient}x ÷ ${coefficient} = ${rightSide + constant} ÷ ${coefficient}`,
+                calculation: `x = ${result}`
+              },
+              {
+                number: 4,
+                title: "Check your answer",
+                content: `Substitute x = ${result} back into the original equation to verify.`,
+                formula: `${coefficient}(${result}) - ${constant} = ${rightSide}`,
+                calculation: `${coefficient * result - constant} = ${rightSide} ✓`
+              }
+            ],
+            keyPoints: [
+              "Always perform the same operation on both sides of the equation",
+              "Work systematically to isolate the variable",
+              "Check your answer by substituting back into the original equation",
+              "Keep your work organized and show each step clearly"
+            ]
+          };
+        }
       }
       
-      // Pattern: ax - b = c (like 4x - 3 = 13)
-      const subtractLinearMatch = equation.match(/(\d+)x\s*-\s*(\d+)\s*=\s*(\d+)/) || 
-                                 lowerQuestion.match(/(\d+)x\s*-\s*(\d+)\s*=\s*(\d+)/);
-      if (subtractLinearMatch) {
-        const [, a, b, c] = subtractLinearMatch;
-        const coefficient = parseInt(a);
-        const constant = parseInt(b);
-        const result = parseInt(c);
-        const xValue = (result + constant) / coefficient;
-        
-        return {
-          steps: [
-            {
-              number: 1,
-              title: "Write down the equation",
-              content: "Start by clearly writing the equation we need to solve.",
-              formula: `${coefficient}x - ${constant} = ${result}`
-            },
-            {
-              number: 2,
-              title: `Add ${constant} to both sides`,
-              content: `To isolate the term with x, we add ${constant} to both sides of the equation.`,
-              formula: `${coefficient}x - ${constant} + ${constant} = ${result} + ${constant}`,
-              calculation: `${coefficient}x = ${result + constant}`
-            },
-            {
-              number: 3,
-              title: `Divide both sides by ${coefficient}`,
-              content: `Now divide both sides by ${coefficient} to solve for x.`,
-              formula: `${coefficient}x ÷ ${coefficient} = ${result + constant} ÷ ${coefficient}`,
-              calculation: `x = ${xValue}`
-            },
-            {
-              number: 4,
-              title: "Check your answer",
-              content: `Substitute x = ${xValue} back into the original equation to verify.`,
-              formula: `${coefficient}(${xValue}) - ${constant} = ${result}`,
-              calculation: `${coefficient * xValue - constant} = ${result} ✓`
-            }
-          ],
-          keyPoints: [
-            "When subtracting in the equation, add the same amount to both sides",
-            "Always perform the same operation on both sides of the equation",
-            "Work systematically to isolate the variable",
-            "Check your answer by substituting back into the original equation"
-          ]
-        };
-      }
-      
-      // Pattern: x + b = c (like x + 8 = 15)
-      const simpleAddMatch = equation.match(/x\s*\+\s*(\d+)\s*=\s*(\d+)/) || 
-                            lowerQuestion.match(/x\s*\+\s*(\d+)\s*=\s*(\d+)/);
-      if (simpleAddMatch) {
-        const [, b, c] = simpleAddMatch;
-        const constant = parseInt(b);
-        const result = parseInt(c);
-        const xValue = result - constant;
-        
-        return {
-          steps: [
-            {
-              number: 1,
-              title: "Write down the equation",
-              content: "Start by clearly writing the equation we need to solve.",
-              formula: `x + ${constant} = ${result}`
-            },
-            {
-              number: 2,
-              title: `Subtract ${constant} from both sides`,
-              content: `To isolate x, we subtract ${constant} from both sides of the equation.`,
-              formula: `x + ${constant} - ${constant} = ${result} - ${constant}`,
-              calculation: `x = ${xValue}`
-            },
-            {
-              number: 3,
-              title: "Check your answer",
-              content: `Substitute x = ${xValue} back into the original equation to verify.`,
-              formula: `${xValue} + ${constant} = ${result}`,
-              calculation: `${xValue + constant} = ${result} ✓`
-            }
-          ],
-          keyPoints: [
-            "To isolate x, perform the opposite operation on both sides",
-            "If x is being added to a number, subtract that number from both sides",
-            "Always check your answer by substituting back",
-            "Simple equations like this are the foundation for more complex algebra"
-          ]
-        };
-      }
-      
-      // Pattern: x - b = c (like x - 4 = 9)
-      const simpleSubMatch = equation.match(/x\s*-\s*(\d+)\s*=\s*(\d+)/) || 
-                            lowerQuestion.match(/x\s*-\s*(\d+)\s*=\s*(\d+)/);
-      if (simpleSubMatch) {
-        const [, b, c] = simpleSubMatch;
-        const constant = parseInt(b);
-        const result = parseInt(c);
-        const xValue = result + constant;
-        
-        return {
-          steps: [
-            {
-              number: 1,
-              title: "Write down the equation",
-              content: "Start by clearly writing the equation we need to solve.",
-              formula: `x - ${constant} = ${result}`
-            },
-            {
-              number: 2,
-              title: `Add ${constant} to both sides`,
-              content: `To isolate x, we add ${constant} to both sides of the equation.`,
-              formula: `x - ${constant} + ${constant} = ${result} + ${constant}`,
-              calculation: `x = ${xValue}`
-            },
-            {
-              number: 3,
-              title: "Check your answer",
-              content: `Substitute x = ${xValue} back into the original equation to verify.`,
-              formula: `${xValue} - ${constant} = ${result}`,
-              calculation: `${xValue - constant} = ${result} ✓`
-            }
-          ],
-          keyPoints: [
-            "To isolate x, perform the opposite operation on both sides",
-            "If x is being subtracted by a number, add that number to both sides",
-            "Always check your answer by substituting back",
-            "Remember: subtraction and addition are opposite operations"
-          ]
-        };
-      }
-      
-      // Generic algebraic equation solver
+      // Default algebraic equation solution if parsing fails
       return {
         steps: [
           {
             number: 1,
-            title: "Identify the equation type",
-            content: "Look at the structure of your equation to determine the best solving method.",
-            example: "Linear equations have x to the first power, quadratic equations have x²"
+            title: "Write down the equation",
+            content: "Start by clearly writing the equation we need to solve.",
+            formula: "Example: 2x + 5 = 17"
           },
           {
             number: 2,
-            title: "Isolate the variable term",
-            content: "Use addition or subtraction to move constants to one side of the equation.",
-            example: "If you have 3x + 5 = 14, subtract 5 from both sides to get 3x = 9"
+            title: "Isolate the x term",
+            content: "Move constants to one side by adding or subtracting from both sides.",
+            formula: "2x + 5 - 5 = 17 - 5",
+            calculation: "2x = 12"
           },
           {
             number: 3,
-            title: "Solve for the variable",
-            content: "Use multiplication or division to isolate the variable completely.",
-            example: "If you have 3x = 9, divide both sides by 3 to get x = 3"
+            title: "Solve for x",
+            content: "Divide both sides by the coefficient of x.",
+            formula: "2x ÷ 2 = 12 ÷ 2",
+            calculation: "x = 6"
           },
           {
             number: 4,
-            title: "Check your solution",
-            content: "Substitute your answer back into the original equation to verify it's correct.",
-            example: "If x = 3, check: 3(3) + 5 = 9 + 5 = 14 ✓"
+            title: "Check your answer",
+            content: "Substitute your answer back into the original equation.",
+            formula: "2(6) + 5 = 17",
+            calculation: "12 + 5 = 17 ✓"
           }
         ],
         keyPoints: [
           "Always perform the same operation on both sides of the equation",
-          "Work systematically: first move constants, then deal with coefficients",
+          "Work systematically to isolate the variable",
           "Check your answer by substituting back into the original equation",
-          "Practice with different types of equations to build confidence"
+          "Keep your work organized and show each step clearly"
         ]
       };
     }
 
-    // Times tables (moved after solve for x to avoid conflicts)
+    // Factoring quadratics
+    if (lowerQuestion.includes('factor') && (lowerQuestion.includes('x²') || lowerQuestion.includes('x^2'))) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Identify the quadratic form",
+            content: "Write the quadratic in standard form ax² + bx + c.",
+            formula: "x² - 5x + 6",
+            example: "Here a = 1, b = -5, c = 6"
+          },
+          {
+            number: 2,
+            title: "Find two numbers that multiply to c and add to b",
+            content: "We need two numbers that multiply to 6 and add to -5.",
+            calculation: "-2 × -3 = 6 and -2 + (-3) = -5"
+          },
+          {
+            number: 3,
+            title: "Write the factored form",
+            content: "Use the two numbers to write the factors.",
+            formula: "x² - 5x + 6 = (x - 2)(x - 3)"
+          },
+          {
+            number: 4,
+            title: "Verify by expanding",
+            content: "Check your answer by multiplying the factors.",
+            calculation: "(x - 2)(x - 3) = x² - 3x - 2x + 6 = x² - 5x + 6 ✓"
+          }
+        ],
+        keyPoints: [
+          "Look for two numbers that multiply to the constant term and add to the coefficient of x",
+          "Always check your factoring by expanding back",
+          "If the leading coefficient is not 1, the process is more complex",
+          "Some quadratics cannot be factored using integers"
+        ]
+      };
+    }
+
+    // Derivatives (Calculus)
+    if (lowerQuestion.includes('derivative') || lowerQuestion.includes('differentiate')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Identify the function",
+            content: "Write down the function we need to differentiate.",
+            formula: "f(x) = 3x² + 2x - 1"
+          },
+          {
+            number: 2,
+            title: "Apply the power rule",
+            content: "For each term axⁿ, the derivative is n·axⁿ⁻¹.",
+            formula: "d/dx[axⁿ] = n·axⁿ⁻¹"
+          },
+          {
+            number: 3,
+            title: "Differentiate each term",
+            content: "Apply the power rule to each term separately.",
+            formula: "d/dx[3x²] = 2·3x¹ = 6x\nd/dx[2x] = 1·2x⁰ = 2\nd/dx[-1] = 0"
+          },
+          {
+            number: 4,
+            title: "Combine the results",
+            content: "Add all the differentiated terms together.",
+            calculation: "f'(x) = 6x + 2"
+          }
+        ],
+        keyPoints: [
+          "The power rule is the most basic differentiation rule",
+          "The derivative of a constant is always zero",
+          "The derivative of x is 1",
+          "Differentiation is linear: d/dx[f + g] = f' + g'"
+        ]
+      };
+    }
+
+    // Slope calculation
+    if (lowerQuestion.includes('slope') && (lowerQuestion.includes('point') || lowerQuestion.includes('('))) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Identify the two points",
+            content: "Write down the coordinates of both points.",
+            formula: "Point 1: (2, 3)\nPoint 2: (5, 9)"
+          },
+          {
+            number: 2,
+            title: "Write the slope formula",
+            content: "The slope formula is the change in y divided by the change in x.",
+            formula: "m = (y₂ - y₁)/(x₂ - x₁)"
+          },
+          {
+            number: 3,
+            title: "Substitute the values",
+            content: "Replace the variables with the actual coordinates.",
+            formula: "m = (9 - 3)/(5 - 2)"
+          },
+          {
+            number: 4,
+            title: "Calculate the slope",
+            content: "Simplify the fraction to get the final answer.",
+            calculation: "m = 6/3 = 2"
+          }
+        ],
+        keyPoints: [
+          "Slope measures how steep a line is",
+          "Positive slope means the line goes up from left to right",
+          "Negative slope means the line goes down from left to right",
+          "The slope formula works for any two points on a line"
+        ]
+      };
+    }
+
+    // Simplify expressions
+    if (lowerQuestion.includes('simplify') && lowerQuestion.includes('x')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Write out the expression",
+            content: "Start with the given expression to simplify.",
+            formula: "(3x² + 2x - 1) + (x² - 4x + 3)"
+          },
+          {
+            number: 2,
+            title: "Remove parentheses",
+            content: "Since we're adding, we can remove the parentheses.",
+            formula: "3x² + 2x - 1 + x² - 4x + 3"
+          },
+          {
+            number: 3,
+            title: "Group like terms",
+            content: "Collect terms with the same variable and power.",
+            formula: "(3x² + x²) + (2x - 4x) + (-1 + 3)"
+          },
+          {
+            number: 4,
+            title: "Combine like terms",
+            content: "Add or subtract the coefficients of like terms.",
+            calculation: "4x² - 2x + 2"
+          }
+        ],
+        keyPoints: [
+          "Like terms have the same variable raised to the same power",
+          "Only combine coefficients, not the variables themselves",
+          "Always arrange terms in descending order of powers",
+          "Check your work by expanding back if possible"
+        ]
+      };
+    }
+
+    // Times tables
     if (lowerQuestion.includes('times table') || (lowerQuestion.includes('table') && /\d+/.test(lowerQuestion))) {
       const number = lowerQuestion.match(/(\d+)/)?.[1] || '8';
       return {
@@ -311,8 +353,9 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
-    // Basic arithmetic operations (moved after algebraic equations)
-    if ((lowerQuestion.includes('+') || lowerQuestion.includes('add')) && !lowerQuestion.includes('x') && !lowerQuestion.includes('=')) {
+    // Basic arithmetic - EXCLUDE if contains 'x' and '=' (algebraic)
+    if ((lowerQuestion.includes('+') || lowerQuestion.includes('add')) && 
+        !(lowerQuestion.includes('x') && lowerQuestion.includes('='))) {
       const numbers = lowerQuestion.match(/\d+/g) || ['12', '8'];
       return {
         steps: [
@@ -350,7 +393,8 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
-    if ((lowerQuestion.includes('-') || lowerQuestion.includes('subtract')) && !lowerQuestion.includes('x') && !lowerQuestion.includes('=')) {
+    if ((lowerQuestion.includes('-') || lowerQuestion.includes('subtract')) && 
+        !(lowerQuestion.includes('x') && lowerQuestion.includes('='))) {
       const numbers = lowerQuestion.match(/\d+/g) || ['15', '7'];
       return {
         steps: [
@@ -389,15 +433,20 @@ export const generateStepByStepSolution = (question: string, subject: string): {
         ]
       };
     }
-    
+
+    // Area of circle
     if (lowerQuestion.includes('area') && lowerQuestion.includes('circle')) {
+      const radiusMatch = lowerQuestion.match(/radius\s*(\d+)/i) || lowerQuestion.match(/r\s*=\s*(\d+)/i);
+      const radius = radiusMatch ? radiusMatch[1] : '7';
+      const area = Math.PI * parseInt(radius) * parseInt(radius);
+      
       return {
         steps: [
           {
             number: 1,
             title: "Identify the given information",
             content: "Write down what we know about the circle.",
-            formula: "Radius (r) = 7 cm"
+            formula: `Radius (r) = ${radius} cm`
           },
           {
             number: 2,
@@ -408,16 +457,16 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           {
             number: 3,
             title: "Substitute the values",
-            content: "Replace r with 7 in the formula.",
-            formula: "A = π × (7)²",
-            calculation: "A = π × 49"
+            content: `Replace r with ${radius} in the formula.`,
+            formula: `A = π × (${radius})²`,
+            calculation: `A = π × ${parseInt(radius) * parseInt(radius)}`
           },
           {
             number: 4,
             title: "Calculate the final answer",
             content: "Multiply to get the area in terms of π, or use π ≈ 3.14159 for a decimal answer.",
-            formula: "A = 49π cm²",
-            calculation: "A ≈ 153.94 cm²"
+            formula: `A = ${parseInt(radius) * parseInt(radius)}π cm²`,
+            calculation: `A ≈ ${area.toFixed(2)} cm²`
           }
         ],
         keyPoints: [
@@ -471,42 +520,86 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
-    // Percentages
-    if (lowerQuestion.includes('percent') || lowerQuestion.includes('%')) {
+    // Multiplication
+    if ((lowerQuestion.includes('×') || lowerQuestion.includes('*') || lowerQuestion.includes('multiply')) && 
+        !lowerQuestion.includes('table')) {
+      const numbers = lowerQuestion.match(/\d+/g) || ['12', '8'];
+      const result = parseInt(numbers[0]) * parseInt(numbers[1] || numbers[0]);
+      
       return {
         steps: [
           {
             number: 1,
-            title: "Understanding percentages",
-            content: "Percent means 'per hundred' or 'out of 100'. It's another way to express fractions and decimals.",
-            example: "50% = 50/100 = 0.5 = half"
+            title: "Set up the multiplication",
+            content: "Write the numbers to be multiplied.",
+            formula: `${numbers[0]} × ${numbers[1] || numbers[0]}`
           },
           {
             number: 2,
-            title: "Converting between forms",
-            content: "You can convert between percentages, decimals, and fractions.",
-            formula: "25% = 25/100 = 1/4 = 0.25",
-            example: "To convert percent to decimal: divide by 100 (move decimal point 2 places left)"
+            title: "Use the multiplication algorithm",
+            content: "For larger numbers, use the standard algorithm or break into parts.",
+            formula: `  ${numbers[0]}\n× ${numbers[1] || numbers[0]}\n----`
           },
           {
             number: 3,
-            title: "Finding a percentage of a number",
-            content: "To find a percentage of a number, multiply the number by the decimal form of the percentage.",
-            formula: "20% of 80 = 0.20 × 80 = 16",
-            example: "What's 15% of 60? → 0.15 × 60 = 9"
+            title: "Calculate the result",
+            content: "Multiply and add partial products if needed.",
+            calculation: `${result}`
           },
           {
             number: 4,
-            title: "Real-world applications",
-            content: "Percentages are used everywhere: discounts, tips, taxes, grades, and statistics.",
-            example: "If a $40 shirt is 25% off, the discount is $10, so you pay $30"
+            title: "Check your answer",
+            content: "Verify using estimation or by dividing the result by one of the factors.",
+            example: `${result} ÷ ${numbers[0]} = ${numbers[1] || numbers[0]} ✓`
           }
         ],
         keyPoints: [
-          "Percent means 'out of 100'",
-          "Convert to decimal by dividing by 100",
-          "Multiply by the decimal to find percentage of a number",
-          "Percentages help us compare parts to wholes"
+          "Multiplication is repeated addition",
+          "The order doesn't matter (commutative property)",
+          "Break large numbers into smaller parts if needed",
+          "Always check your work"
+        ]
+      };
+    }
+
+    // Division
+    if ((lowerQuestion.includes('÷') || lowerQuestion.includes('/') || lowerQuestion.includes('divide')) && 
+        !lowerQuestion.includes('fraction')) {
+      const numbers = lowerQuestion.match(/\d+/g) || ['24', '6'];
+      const result = parseInt(numbers[0]) / parseInt(numbers[1] || numbers[0]);
+      
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Set up the division",
+            content: "Write the dividend (number being divided) and divisor (number dividing by).",
+            formula: `${numbers[0]} ÷ ${numbers[1] || numbers[0]}`
+          },
+          {
+            number: 2,
+            title: "Use long division or mental math",
+            content: "For simple problems, use mental math. For complex ones, use long division.",
+            example: `How many ${numbers[1] || numbers[0]}s are in ${numbers[0]}?`
+          },
+          {
+            number: 3,
+            title: "Calculate the quotient",
+            content: "Find how many times the divisor goes into the dividend.",
+            calculation: `${result}`
+          },
+          {
+            number: 4,
+            title: "Check your answer",
+            content: "Multiply the quotient by the divisor to get back the dividend.",
+            example: `${result} × ${numbers[1] || numbers[0]} = ${numbers[0]} ✓`
+          }
+        ],
+        keyPoints: [
+          "Division is the opposite of multiplication",
+          "The answer is called the quotient",
+          "Check division by multiplying back",
+          "Some divisions result in remainders or decimals"
         ]
       };
     }
@@ -557,14 +650,20 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
     
-    if (lowerQuestion.includes('force') && lowerQuestion.includes('accelerate')) {
+    if (lowerQuestion.includes('force') && (lowerQuestion.includes('accelerate') || lowerQuestion.includes('acceleration'))) {
+      const massMatch = lowerQuestion.match(/(\d+)\s*kg/i);
+      const accelMatch = lowerQuestion.match(/(\d+)\s*m\/s/i);
+      const mass = massMatch ? massMatch[1] : '10';
+      const acceleration = accelMatch ? accelMatch[1] : '5';
+      const force = parseInt(mass) * parseInt(acceleration);
+      
       return {
         steps: [
           {
             number: 1,
             title: "Identify the given information",
             content: "Write down what we know from the problem.",
-            formula: "Mass (m) = 10 kg, Acceleration (a) = 5 m/s²"
+            formula: `Mass (m) = ${mass} kg, Acceleration (a) = ${acceleration} m/s²`
           },
           {
             number: 2,
@@ -576,13 +675,13 @@ export const generateStepByStepSolution = (question: string, subject: string): {
             number: 3,
             title: "Substitute the values",
             content: "Replace m and a with the given values.",
-            formula: "F = 10 kg × 5 m/s²"
+            formula: `F = ${mass} kg × ${acceleration} m/s²`
           },
           {
             number: 4,
             title: "Calculate the force",
             content: "Multiply to find the force in Newtons.",
-            calculation: "F = 50 N"
+            calculation: `F = ${force} N`
           }
         ],
         keyPoints: [
@@ -590,6 +689,160 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           "Newton's second law: F = ma",
           "More mass or more acceleration requires more force",
           "This law explains why it's harder to push a heavy object"
+        ]
+      };
+    }
+
+    if (lowerQuestion.includes('mitosis')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "What is mitosis?",
+            content: "Mitosis is the process by which a cell divides to create two identical daughter cells.",
+            example: "It's how your body grows and repairs itself"
+          },
+          {
+            number: 2,
+            title: "Prophase",
+            content: "Chromosomes condense and become visible. The nuclear membrane begins to break down.",
+            example: "DNA coils up tightly so it can be moved around safely"
+          },
+          {
+            number: 3,
+            title: "Metaphase",
+            content: "Chromosomes line up at the center of the cell (the metaphase plate).",
+            example: "Like lining up for a race - everything gets organized before the split"
+          },
+          {
+            number: 4,
+            title: "Anaphase",
+            content: "Sister chromatids separate and move to opposite ends of the cell.",
+            example: "The chromosome copies are pulled apart to opposite sides"
+          },
+          {
+            number: 5,
+            title: "Telophase and Cytokinesis",
+            content: "Nuclear membranes reform around each set of chromosomes, and the cell divides.",
+            example: "Two new cells are formed, each with identical genetic material"
+          }
+        ],
+        keyPoints: [
+          "Mitosis produces two genetically identical cells",
+          "It's essential for growth and repair in multicellular organisms",
+          "The process ensures each new cell gets a complete copy of DNA",
+          "Cancer occurs when mitosis goes wrong and cells divide uncontrollably"
+        ]
+      };
+    }
+
+    if (lowerQuestion.includes('balance') && (lowerQuestion.includes('equation') || lowerQuestion.includes('h₂') || lowerQuestion.includes('o₂'))) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Write the unbalanced equation",
+            content: "Start with the chemical equation showing reactants and products.",
+            formula: "H₂ + O₂ → H₂O"
+          },
+          {
+            number: 2,
+            title: "Count atoms on each side",
+            content: "Count the number of each type of atom on both sides of the equation.",
+            example: "Left: 2 H, 2 O | Right: 2 H, 1 O"
+          },
+          {
+            number: 3,
+            title: "Balance by adding coefficients",
+            content: "Add numbers in front of compounds to balance the atoms.",
+            formula: "2H₂ + O₂ → 2H₂O"
+          },
+          {
+            number: 4,
+            title: "Check your work",
+            content: "Verify that you have the same number of each atom on both sides.",
+            calculation: "Left: 4 H, 2 O | Right: 4 H, 2 O ✓"
+          }
+        ],
+        keyPoints: [
+          "Chemical equations must be balanced (same atoms on both sides)",
+          "Only change coefficients, never change chemical formulas",
+          "Start with the most complex molecule",
+          "Balance one element at a time"
+        ]
+      };
+    }
+
+    if (lowerQuestion.includes('newton') && lowerQuestion.includes('law')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Newton's First Law (Law of Inertia)",
+            content: "An object at rest stays at rest, and an object in motion stays in motion, unless acted upon by an unbalanced force.",
+            example: "A ball on a table won't move unless you push it"
+          },
+          {
+            number: 2,
+            title: "Newton's Second Law (F = ma)",
+            content: "The acceleration of an object is directly proportional to the net force acting on it and inversely proportional to its mass.",
+            formula: "F = ma (Force = mass × acceleration)"
+          },
+          {
+            number: 3,
+            title: "Newton's Third Law (Action-Reaction)",
+            content: "For every action, there is an equal and opposite reaction.",
+            example: "When you walk, you push back on the ground, and the ground pushes forward on you"
+          },
+          {
+            number: 4,
+            title: "Applications in daily life",
+            content: "These laws explain motion in everything from cars to rockets to walking.",
+            example: "Seatbelts work because of the first law - your body wants to keep moving when the car stops"
+          }
+        ],
+        keyPoints: [
+          "These three laws form the foundation of classical mechanics",
+          "They explain all motion of objects from atoms to planets",
+          "Understanding these laws helps explain everyday experiences",
+          "They're still used today in engineering and space exploration"
+        ]
+      };
+    }
+
+    if (lowerQuestion.includes('dna') && lowerQuestion.includes('rna')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "What is DNA?",
+            content: "DNA (Deoxyribonucleic Acid) is the molecule that stores genetic information in cells.",
+            example: "Think of it as the instruction manual for building and running a living organism"
+          },
+          {
+            number: 2,
+            title: "What is RNA?",
+            content: "RNA (Ribonucleic Acid) is a molecule that helps carry out the instructions stored in DNA.",
+            example: "RNA is like the messenger that takes instructions from DNA to make proteins"
+          },
+          {
+            number: 3,
+            title: "Key structural differences",
+            content: "DNA is double-stranded and contains thymine; RNA is single-stranded and contains uracil instead of thymine.",
+            formula: "DNA: A-T, G-C base pairs\nRNA: A-U, G-C base pairs"
+          },
+          {
+            number: 4,
+            title: "Different functions",
+            content: "DNA stores information long-term; RNA carries out various functions including protein synthesis.",
+            example: "DNA is like a library book (permanent storage), RNA is like a photocopy (temporary working copy)"
+          }
+        ],
+        keyPoints: [
+          "DNA stores genetic information, RNA helps use that information",
+          "DNA is double-stranded, RNA is usually single-stranded",
+          "DNA contains thymine, RNA contains uracil instead",
+          "Both are essential for life and work together in cells"
         ]
       };
     }
@@ -635,134 +888,6 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           "Temperature changes can cause state changes",
           "Each state has unique properties and behaviors",
           "Energy is required to change from one state to another"
-        ]
-      };
-    }
-
-    // Newton's Laws
-    if (lowerQuestion.includes('newton') && lowerQuestion.includes('law')) {
-      return {
-        steps: [
-          {
-            number: 1,
-            title: "Newton's First Law (Law of Inertia)",
-            content: "An object at rest stays at rest, and an object in motion stays in motion, unless acted upon by an unbalanced force.",
-            example: "A ball rolling on the ground will eventually stop due to friction (unbalanced force)"
-          },
-          {
-            number: 2,
-            title: "Newton's Second Law (F = ma)",
-            content: "The acceleration of an object is directly proportional to the net force acting on it and inversely proportional to its mass.",
-            formula: "Force = mass × acceleration (F = ma)",
-            example: "It takes more force to accelerate a heavy truck than a light car"
-          },
-          {
-            number: 3,
-            title: "Newton's Third Law (Action-Reaction)",
-            content: "For every action, there is an equal and opposite reaction.",
-            example: "When you walk, you push backward on the ground, and the ground pushes forward on you"
-          },
-          {
-            number: 4,
-            title: "Real-world applications",
-            content: "These laws explain how everything moves in our universe.",
-            example: "Rockets work by pushing gas downward (action) which pushes the rocket upward (reaction)"
-          }
-        ],
-        keyPoints: [
-          "Newton's laws form the foundation of classical mechanics",
-          "These laws apply to all objects, from atoms to planets",
-          "Understanding these laws helps explain everyday motion",
-          "They're essential for engineering, space travel, and sports"
-        ]
-      };
-    }
-
-    // DNA and RNA
-    if (lowerQuestion.includes('dna') || lowerQuestion.includes('rna')) {
-      return {
-        steps: [
-          {
-            number: 1,
-            title: "What is DNA?",
-            content: "DNA (Deoxyribonucleic Acid) is the molecule that contains genetic instructions for all living things.",
-            example: "Think of DNA as a recipe book that tells cells how to build and maintain an organism"
-          },
-          {
-            number: 2,
-            title: "DNA structure",
-            content: "DNA has a double helix structure made of two strands connected by base pairs.",
-            formula: "Base pairs: A-T (Adenine-Thymine) and G-C (Guanine-Cytosine)",
-            example: "Like a twisted ladder where the rungs are the base pairs"
-          },
-          {
-            number: 3,
-            title: "What is RNA?",
-            content: "RNA (Ribonucleic Acid) is similar to DNA but single-stranded and helps make proteins.",
-            example: "RNA is like a messenger that carries instructions from DNA to make proteins"
-          },
-          {
-            number: 4,
-            title: "Key differences",
-            content: "DNA stores genetic information; RNA helps use that information to make proteins.",
-            formula: "DNA: Double-stranded, has Thymine, stays in nucleus\nRNA: Single-stranded, has Uracil instead of Thymine, can leave nucleus"
-          },
-          {
-            number: 5,
-            title: "Why they're important",
-            content: "DNA and RNA work together to control all life processes.",
-            example: "DNA is the master plan, RNA is the construction worker that builds proteins according to the plan"
-          }
-        ],
-        keyPoints: [
-          "DNA stores genetic information in all living things",
-          "RNA helps translate DNA instructions into proteins",
-          "Both use a four-letter code (A, T/U, G, C) to store information",
-          "Understanding DNA and RNA is key to genetics and medicine"
-        ]
-      };
-    }
-
-    // Mitosis
-    if (lowerQuestion.includes('mitosis')) {
-      return {
-        steps: [
-          {
-            number: 1,
-            title: "What is mitosis?",
-            content: "Mitosis is the process by which a cell divides to create two identical daughter cells.",
-            example: "It's how your body grows and repairs itself by making new cells"
-          },
-          {
-            number: 2,
-            title: "Prophase",
-            content: "The chromosomes condense and become visible. The nuclear membrane begins to break down.",
-            example: "Like organizing scattered papers into neat folders before moving"
-          },
-          {
-            number: 3,
-            title: "Metaphase",
-            content: "Chromosomes line up in the middle of the cell.",
-            example: "Like lining up students in the center of a classroom"
-          },
-          {
-            number: 4,
-            title: "Anaphase",
-            content: "The chromosomes separate and move to opposite ends of the cell.",
-            example: "Like splitting the line of students and sending half to each side of the room"
-          },
-          {
-            number: 5,
-            title: "Telophase and Cytokinesis",
-            content: "Two new nuclei form, and the cell membrane pinches in to create two separate cells.",
-            example: "Like building walls to create two separate rooms from one"
-          }
-        ],
-        keyPoints: [
-          "Mitosis creates two identical cells from one parent cell",
-          "It's essential for growth and repair in multicellular organisms",
-          "Each daughter cell has the same number of chromosomes as the parent",
-          "The process is carefully controlled to prevent errors"
         ]
       };
     }
@@ -844,6 +969,80 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
+    if (lowerQuestion.includes('metaphor') && lowerQuestion.includes('simile')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Define simile",
+            content: "A simile compares two different things using 'like' or 'as'.",
+            example: "She runs like the wind. Her smile is as bright as the sun."
+          },
+          {
+            number: 2,
+            title: "Define metaphor",
+            content: "A metaphor directly states that one thing is another, without using 'like' or 'as'.",
+            example: "Life is a journey. Time is money."
+          },
+          {
+            number: 3,
+            title: "Key difference",
+            content: "Similes use comparison words (like, as), while metaphors make direct statements.",
+            formula: "Simile: X is like Y\nMetaphor: X is Y"
+          },
+          {
+            number: 4,
+            title: "Purpose and effect",
+            content: "Both create vivid imagery and help readers understand abstract concepts.",
+            example: "They make writing more interesting and help explain complex ideas"
+          }
+        ],
+        keyPoints: [
+          "Both similes and metaphors are types of figurative language",
+          "Similes use 'like' or 'as' for comparison",
+          "Metaphors make direct comparisons without comparison words",
+          "Both help create vivid imagery in writing"
+        ]
+      };
+    }
+
+    if (lowerQuestion.includes('literary device')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Read the sentence carefully",
+            content: "Look for patterns, repetitions, comparisons, or unusual word choices.",
+            example: "Example sentence: 'The wind whispered through the trees.'"
+          },
+          {
+            number: 2,
+            title: "Identify common devices",
+            content: "Look for metaphors, similes, personification, alliteration, etc.",
+            example: "In our example: 'whispered' gives human qualities to wind = personification"
+          },
+          {
+            number: 3,
+            title: "Consider the effect",
+            content: "Think about why the author chose this device and what effect it creates.",
+            example: "Personification makes the scene feel alive and peaceful"
+          },
+          {
+            number: 4,
+            title: "Name and explain",
+            content: "Identify the device and explain how it works in the sentence.",
+            example: "This sentence uses personification to create a calm, natural atmosphere"
+          }
+        ],
+        keyPoints: [
+          "Literary devices add depth and meaning to writing",
+          "Common devices include metaphor, simile, personification, and alliteration",
+          "Always explain the effect, not just identify the device",
+          "Context matters - consider the overall tone and purpose"
+        ]
+      };
+    }
+
     // Parts of speech
     if (lowerQuestion.includes('parts of speech') || lowerQuestion.includes('noun') || lowerQuestion.includes('verb') || lowerQuestion.includes('adjective')) {
       return {
@@ -888,91 +1087,39 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
-    // Literary devices
-    if (lowerQuestion.includes('literary device') || lowerQuestion.includes('metaphor') || lowerQuestion.includes('simile')) {
+    if (lowerQuestion.includes('mla') && lowerQuestion.includes('cite')) {
       return {
         steps: [
           {
             number: 1,
-            title: "Similes",
-            content: "Similes compare two things using 'like' or 'as'.",
-            example: "She's as brave as a lion. Her voice is like music."
+            title: "Understand MLA format basics",
+            content: "MLA (Modern Language Association) format is commonly used in English and humanities classes.",
+            example: "It provides a standard way to give credit to your sources"
           },
           {
             number: 2,
-            title: "Metaphors",
-            content: "Metaphors compare two things by saying one IS the other.",
-            example: "Life is a journey. Time is money."
+            title: "In-text citations",
+            content: "Include the author's last name and page number in parentheses after quotes or paraphrases.",
+            formula: "(Smith 45) or (Smith and Jones 23)"
           },
           {
             number: 3,
-            title: "Personification",
-            content: "Personification gives human qualities to non-human things.",
-            example: "The wind whispered through the trees. The sun smiled down on us."
+            title: "Works Cited page",
+            content: "List all sources alphabetically by author's last name at the end of your paper.",
+            example: "Smith, John. 'Article Title.' Journal Name, vol. 1, no. 2, 2023, pp. 45-67."
           },
           {
             number: 4,
-            title: "Alliteration",
-            content: "Alliteration repeats the same sound at the beginning of words.",
-            example: "Peter Piper picked a peck of pickled peppers."
-          },
-          {
-            number: 5,
-            title: "Why authors use them",
-            content: "Literary devices make writing more interesting, memorable, and meaningful.",
-            example: "They help readers visualize and feel what the author is describing"
+            title: "Different source types",
+            content: "Books, articles, websites, and other sources have slightly different citation formats.",
+            example: "Always check the specific format for your type of source"
           }
         ],
         keyPoints: [
-          "Literary devices are tools that make writing more effective",
-          "They help create vivid images in the reader's mind",
-          "Different devices serve different purposes",
-          "Learning to identify them improves reading comprehension"
-        ]
-      };
-    }
-
-    // Essay writing
-    if (lowerQuestion.includes('essay') || lowerQuestion.includes('paragraph') || lowerQuestion.includes('write')) {
-      return {
-        steps: [
-          {
-            number: 1,
-            title: "Plan your essay",
-            content: "Start with brainstorming and organizing your ideas before writing.",
-            example: "Create an outline: Introduction, Body Paragraph 1, Body Paragraph 2, Body Paragraph 3, Conclusion"
-          },
-          {
-            number: 2,
-            title: "Write a strong introduction",
-            content: "Hook the reader, provide background, and end with your thesis statement.",
-            example: "Start with a question, surprising fact, or interesting quote"
-          },
-          {
-            number: 3,
-            title: "Develop body paragraphs",
-            content: "Each paragraph should have one main idea that supports your thesis.",
-            formula: "Topic sentence + Evidence + Explanation + Transition",
-            example: "Start each paragraph with a clear topic sentence"
-          },
-          {
-            number: 4,
-            title: "Write a conclusion",
-            content: "Restate your thesis, summarize main points, and leave the reader with something to think about.",
-            example: "Don't just repeat what you said - show why it matters"
-          },
-          {
-            number: 5,
-            title: "Revise and edit",
-            content: "Review your essay for clarity, organization, grammar, and spelling.",
-            example: "Read it aloud to catch errors and awkward sentences"
-          }
-        ],
-        keyPoints: [
-          "Good essays have clear structure and organization",
-          "Each paragraph should support your main argument",
-          "Use transitions to connect your ideas smoothly",
-          "Always revise and proofread your work"
+          "Always give credit to avoid plagiarism",
+          "In-text citations connect to your Works Cited page",
+          "Different sources require different citation formats",
+          "When in doubt, consult the MLA Handbook or your teacher"
         ]
       };
     }
@@ -985,6 +1132,7 @@ export const generateStepByStepSolution = (question: string, subject: string): {
         lowerQuestion.includes('civil war') || 
         lowerQuestion.includes('what started the american civil war') ||
         lowerQuestion.includes('causes of the civil war') ||
+        lowerQuestion.includes('what led to the american civil war') ||
         lowerQuestion.includes('why did the civil war start')) {
       return {
         steps: [
@@ -1035,7 +1183,8 @@ export const generateStepByStepSolution = (question: string, subject: string): {
     }
 
     // World War I
-    if (lowerQuestion.includes('world war i') || lowerQuestion.includes('wwi') || lowerQuestion.includes('world war 1')) {
+    if (lowerQuestion.includes('world war i') || lowerQuestion.includes('wwi') || lowerQuestion.includes('world war 1') || 
+        lowerQuestion.includes('causes of world war i') || lowerQuestion.includes('what caused world war 1')) {
       return {
         steps: [
           {
@@ -1068,6 +1217,44 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           "The alliance system meant that a small conflict could escalate quickly",
           "Nationalism and imperialism created tensions between nations",
           "The war lasted from 1914 to 1918 and changed the world forever"
+        ]
+      };
+    }
+
+    // Industrial Revolution
+    if (lowerQuestion.includes('industrial revolution')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "What was the Industrial Revolution?",
+            content: "A period of major technological and social change from the late 1700s to mid-1800s.",
+            example: "Society shifted from farming and handmade goods to machine production in factories"
+          },
+          {
+            number: 2,
+            title: "Key technological innovations",
+            content: "New machines and power sources revolutionized production.",
+            example: "Steam engine, spinning jenny, power loom, cotton gin"
+          },
+          {
+            number: 3,
+            title: "Changes in work and society",
+            content: "People moved from rural areas to cities to work in factories.",
+            example: "Rise of factory towns, new social classes (industrial workers and factory owners)"
+          },
+          {
+            number: 4,
+            title: "Long-term impacts",
+            content: "The Industrial Revolution changed how people lived, worked, and thought about progress.",
+            example: "Led to modern capitalism, labor movements, and environmental challenges"
+          }
+        ],
+        keyPoints: [
+          "Started in Britain and spread to other countries",
+          "Transformed agriculture, manufacturing, and transportation",
+          "Created new social and economic structures",
+          "Set the foundation for the modern industrial world"
         ]
       };
     }
@@ -1110,90 +1297,116 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
-    // Industrial Revolution
-    if (lowerQuestion.includes('industrial revolution')) {
+    // Renaissance
+    if (lowerQuestion.includes('renaissance')) {
       return {
         steps: [
           {
             number: 1,
-            title: "What was the Industrial Revolution?",
-            content: "A period of major technological and social change from the late 1700s to mid-1800s.",
-            example: "Society shifted from farming and handmade goods to machine production in factories"
+            title: "What was the Renaissance?",
+            content: "A period of cultural rebirth in Europe from roughly 1300 to 1600.",
+            example: "Renaissance means 'rebirth' - it was a revival of art, learning, and culture"
           },
           {
             number: 2,
-            title: "Key inventions",
-            content: "New machines and technologies revolutionized production.",
-            example: "Steam engine, spinning jenny, power loom, cotton gin, railroad"
+            title: "Key characteristics",
+            content: "Emphasis on humanism, classical learning, and individual achievement.",
+            example: "People studied ancient Greek and Roman texts and focused on human potential"
           },
           {
             number: 3,
-            title: "Changes in work and life",
-            content: "People moved from farms to cities to work in factories.",
-            example: "Factory workers worked long hours in often dangerous conditions"
+            title: "Major achievements",
+            content: "Breakthroughs in art, science, literature, and exploration.",
+            example: "Leonardo da Vinci's art, Galileo's astronomy, Shakespeare's plays, Columbus's voyages"
           },
           {
             number: 4,
-            title: "Transportation revolution",
-            content: "New forms of transportation connected markets and people.",
-            example: "Canals, railroads, and steamships made trade faster and cheaper"
-          },
-          {
-            number: 5,
-            title: "Long-term effects",
-            content: "The Industrial Revolution changed society permanently.",
-            example: "Created modern industrial economy, but also led to pollution and labor problems"
+            title: "Long-term impact",
+            content: "The Renaissance laid the groundwork for the modern world.",
+            example: "Led to the Scientific Revolution, Age of Exploration, and modern democratic ideas"
           }
         ],
         keyPoints: [
-          "The Industrial Revolution began in Britain and spread worldwide",
-          "It created the modern factory system and industrial economy",
-          "New technologies increased production but created new social problems",
-          "It laid the foundation for our modern world"
+          "Started in Italy and spread throughout Europe",
+          "Marked the transition from medieval to modern times",
+          "Emphasized human achievement and potential",
+          "Produced some of history's greatest artists and thinkers"
         ]
       };
     }
 
-    // Ancient civilizations
-    if (lowerQuestion.includes('ancient') || lowerQuestion.includes('egypt') || lowerQuestion.includes('greece') || lowerQuestion.includes('rome')) {
+    // French Revolution
+    if (lowerQuestion.includes('french revolution')) {
       return {
         steps: [
           {
             number: 1,
-            title: "Ancient Egypt",
-            content: "One of the world's first great civilizations, lasting over 3,000 years.",
-            example: "Known for pyramids, pharaohs, hieroglyphics, and the Nile River"
+            title: "Causes of the revolution",
+            content: "France faced serious economic, social, and political problems in the 1780s.",
+            example: "Heavy taxes, food shortages, inequality between social classes, and absolute monarchy"
           },
           {
             number: 2,
-            title: "Ancient Greece",
-            content: "Birthplace of democracy, philosophy, and many ideas we still use today.",
-            example: "Athens (democracy), Sparta (military), philosophers like Socrates and Plato"
+            title: "The revolution begins (1789)",
+            content: "The Third Estate (common people) demanded political representation and rights.",
+            example: "Storming of the Bastille (July 14, 1789) became a symbol of the revolution"
           },
           {
             number: 3,
-            title: "Ancient Rome",
-            content: "Started as a small city-state and became a vast empire controlling much of Europe.",
-            example: "Roman Republic, Julius Caesar, Roman Empire, Roman law and engineering"
+            title: "Radical phase and Reign of Terror",
+            content: "The revolution became increasingly violent and extreme.",
+            example: "King Louis XVI and Queen Marie Antoinette were executed; thousands died during the Terror"
           },
           {
             number: 4,
-            title: "Common features",
-            content: "These civilizations shared certain characteristics that made them successful.",
-            example: "Strong governments, written laws, trade networks, military power, cultural achievements"
-          },
-          {
-            number: 5,
-            title: "Their lasting influence",
-            content: "Ideas and innovations from these civilizations still influence us today.",
-            example: "Democracy (Greece), law and government (Rome), architecture and art (all three)"
+            title: "Consequences and legacy",
+            content: "The revolution changed France and influenced democratic movements worldwide.",
+            example: "Ended feudalism, established principles of liberty and equality, inspired other revolutions"
           }
         ],
         keyPoints: [
-          "Ancient civilizations laid the foundations for modern society",
-          "Each contributed unique ideas and innovations",
-          "Geography played a major role in their development",
-          "Their influence can still be seen in modern government, law, and culture"
+          "Overthrew the absolute monarchy and established a republic",
+          "Promoted ideas of liberty, equality, and fraternity",
+          "Led to the rise of Napoleon Bonaparte",
+          "Influenced democratic movements around the world"
+        ]
+      };
+    }
+
+    // Cold War
+    if (lowerQuestion.includes('cold war')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "What was the Cold War?",
+            content: "A period of tension and competition between the US and Soviet Union from 1945-1991.",
+            example: "Called 'cold' because it never became a direct military conflict between the superpowers"
+          },
+          {
+            number: 2,
+            title: "Ideological differences",
+            content: "The conflict was based on opposing political and economic systems.",
+            example: "US: Capitalism and democracy vs USSR: Communism and authoritarian government"
+          },
+          {
+            number: 3,
+            title: "Key events and crises",
+            content: "Several major confrontations brought the world close to nuclear war.",
+            example: "Berlin Blockade, Korean War, Cuban Missile Crisis, Vietnam War"
+          },
+          {
+            number: 4,
+            title: "End of the Cold War",
+            content: "The Soviet Union collapsed in 1991, ending the Cold War.",
+            example: "Fall of Berlin Wall (1989), dissolution of USSR (1991)"
+          }
+        ],
+        keyPoints: [
+          "Dominated international relations for nearly 50 years",
+          "Led to an arms race and space race between superpowers",
+          "Influenced conflicts around the world",
+          "Ended with the collapse of the Soviet Union"
         ]
       };
     }
@@ -1295,14 +1508,14 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           {
             number: 1,
             title: "Evaporation",
-            content: "The sun heats water in oceans, lakes, and rivers, turning it into water vapor.",
-            example: "Like when you see steam rising from a hot cup of coffee"
+            content: "Heat from the sun causes water from oceans, lakes, and rivers to turn into water vapor.",
+            example: "Like when a puddle dries up on a hot day"
           },
           {
             number: 2,
             title: "Condensation",
             content: "Water vapor rises and cools, forming tiny droplets that create clouds.",
-            example: "Like how your breath fogs up on a cold day"
+            example: "This is why you see your breath on a cold day"
           },
           {
             number: 3,
@@ -1312,66 +1525,130 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           },
           {
             number: 4,
-            title: "Collection",
+            title: "Collection and runoff",
             content: "Precipitation flows into rivers, lakes, and oceans, or soaks into the ground.",
-            example: "Rainwater flows downhill into streams, which flow into rivers, which flow into oceans"
-          },
-          {
-            number: 5,
-            title: "The cycle continues",
-            content: "The water cycle is continuous - it never stops.",
-            example: "The same water has been cycling through Earth's systems for billions of years"
+            example: "This water eventually evaporates again, continuing the cycle"
           }
         ],
         keyPoints: [
           "The water cycle is powered by energy from the sun",
-          "Water constantly moves between oceans, atmosphere, and land",
-          "This cycle provides fresh water for all life on Earth",
-          "Human activities can affect parts of the water cycle"
+          "Water constantly moves between the atmosphere, land, and oceans",
+          "This process provides fresh water for all life on Earth",
+          "Human activities can affect the water cycle"
         ]
       };
     }
 
-    // Population patterns
-    if (lowerQuestion.includes('population') || lowerQuestion.includes('settlement')) {
+    // Plate tectonics
+    if (lowerQuestion.includes('plate tectonics')) {
       return {
         steps: [
           {
             number: 1,
-            title: "Factors affecting where people live",
-            content: "Physical and human factors influence population distribution.",
-            example: "Climate, water availability, landforms, resources, jobs, transportation"
+            title: "What are tectonic plates?",
+            content: "Earth's outer layer (lithosphere) is broken into large pieces called tectonic plates.",
+            example: "Like a cracked eggshell, but the pieces are slowly moving"
           },
           {
             number: 2,
-            title: "Dense population areas",
-            content: "Some areas have many people living close together.",
-            example: "River valleys, coastal plains, areas with good climate and resources"
+            title: "How plates move",
+            content: "Plates move due to convection currents in the hot mantle beneath them.",
+            example: "Hot material rises, cool material sinks, creating circular currents"
           },
           {
             number: 3,
-            title: "Sparse population areas",
-            content: "Some areas have very few people.",
-            example: "Deserts, mountains, polar regions, areas with harsh climates"
+            title: "Types of plate boundaries",
+            content: "Plates interact in three main ways: divergent, convergent, and transform.",
+            example: "Divergent: plates move apart; Convergent: plates collide; Transform: plates slide past each other"
           },
           {
             number: 4,
-            title: "Urban vs rural",
-            content: "People live in cities (urban) or countryside (rural) for different reasons.",
-            example: "Cities offer jobs and services; rural areas offer space and agriculture"
+            title: "Effects of plate movement",
+            content: "Plate tectonics causes earthquakes, volcanoes, and mountain formation.",
+            example: "Most earthquakes and volcanoes occur along plate boundaries"
+          }
+        ],
+        keyPoints: [
+          "Plate tectonics explains most geological activity on Earth",
+          "Plates move very slowly - only a few centimeters per year",
+          "This theory revolutionized our understanding of Earth",
+          "It explains the distribution of earthquakes, volcanoes, and mountains"
+        ]
+      };
+    }
+
+    // Rivers and landscapes
+    if (lowerQuestion.includes('river') && lowerQuestion.includes('landscape')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Erosion by flowing water",
+            content: "Rivers pick up and carry away soil, rocks, and sediment as they flow.",
+            example: "Fast-flowing water can move large rocks; slow water carries fine particles"
           },
           {
-            number: 5,
-            title: "Migration patterns",
-            content: "People move from place to place for various reasons.",
-            example: "Economic opportunities, political freedom, natural disasters, family"
+            number: 2,
+            title: "Creating valleys",
+            content: "Over time, rivers cut down into the landscape, forming valleys.",
+            example: "The Grand Canyon was carved by the Colorado River over millions of years"
+          },
+          {
+            number: 3,
+            title: "Deposition and floodplains",
+            content: "When rivers slow down, they deposit sediment, creating fertile floodplains.",
+            example: "The Nile River delta in Egypt is built from sediment deposited by the river"
+          },
+          {
+            number: 4,
+            title: "Changing course over time",
+            content: "Rivers naturally change their path through erosion and deposition.",
+            example: "Meandering rivers create oxbow lakes when they change course"
+          }
+        ],
+        keyPoints: [
+          "Rivers are powerful agents of erosion and deposition",
+          "They create many landscape features over long periods",
+          "River valleys are often the most fertile agricultural areas",
+          "Human activities can significantly alter river systems"
+        ]
+      };
+    }
+
+    // Population distribution
+    if (lowerQuestion.includes('population distribution')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Physical factors",
+            content: "Climate, terrain, and natural resources affect where people live.",
+            example: "Most people live in areas with moderate climate, flat land, and fresh water"
+          },
+          {
+            number: 2,
+            title: "Economic opportunities",
+            content: "People concentrate where there are jobs and economic opportunities.",
+            example: "Cities and industrial areas attract large populations"
+          },
+          {
+            number: 3,
+            title: "Historical factors",
+            content: "Past events and cultural factors influence settlement patterns.",
+            example: "Colonial history, migration patterns, and cultural preferences"
+          },
+          {
+            number: 4,
+            title: "Global patterns",
+            content: "Most people live in certain regions of the world.",
+            example: "East Asia, South Asia, Europe, and eastern North America have the highest population densities"
           }
         ],
         keyPoints: [
           "Population distribution is uneven across the Earth",
           "Physical geography strongly influences where people can live",
-          "Economic opportunities attract people to certain areas",
-          "Understanding population patterns helps with planning and resource allocation"
+          "Economic and historical factors also play important roles",
+          "Understanding these patterns helps explain human geography"
         ]
       };
     }
@@ -1466,6 +1743,82 @@ export const generateStepByStepSolution = (question: string, subject: string): {
       };
     }
 
+    // Capitalism vs Socialism
+    if (lowerQuestion.includes('capitalism') && lowerQuestion.includes('socialism')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Define capitalism",
+            content: "Capitalism is an economic system where private individuals own businesses and property.",
+            example: "People can start their own companies and keep the profits they make"
+          },
+          {
+            number: 2,
+            title: "Define socialism",
+            content: "Socialism is an economic system where the government or community owns major industries.",
+            example: "The government controls key industries like healthcare, education, and utilities"
+          },
+          {
+            number: 3,
+            title: "Key differences",
+            content: "The main difference is who owns and controls the means of production.",
+            formula: "Capitalism: Private ownership\nSocialism: Public/government ownership"
+          },
+          {
+            number: 4,
+            title: "Real-world examples",
+            content: "Most countries today use mixed systems with elements of both.",
+            example: "US: Mostly capitalist with some government programs. Nordic countries: Mixed systems with strong social programs"
+          }
+        ],
+        keyPoints: [
+          "Both systems aim to organize economic activity",
+          "Pure capitalism and pure socialism are rare in practice",
+          "Most modern economies are mixed systems",
+          "Each system has advantages and disadvantages"
+        ]
+      };
+    }
+
+    // Interest rates
+    if (lowerQuestion.includes('interest rate')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "What are interest rates?",
+            content: "Interest rates are the cost of borrowing money or the reward for saving money.",
+            example: "If you borrow $100 at 5% interest, you pay back $105"
+          },
+          {
+            number: 2,
+            title: "How they affect borrowing",
+            content: "Higher interest rates make borrowing more expensive, lower rates make it cheaper.",
+            example: "High rates discourage people from taking loans; low rates encourage borrowing"
+          },
+          {
+            number: 3,
+            title: "Impact on spending and saving",
+            content: "Interest rates influence whether people spend or save their money.",
+            example: "High rates encourage saving; low rates encourage spending"
+          },
+          {
+            number: 4,
+            title: "Economic effects",
+            content: "Central banks use interest rates to influence economic activity.",
+            example: "Lower rates to stimulate growth; raise rates to control inflation"
+          }
+        ],
+        keyPoints: [
+          "Interest rates are a key tool of monetary policy",
+          "They affect borrowing, spending, and saving decisions",
+          "Central banks adjust rates to manage the economy",
+          "Changes in interest rates ripple through the entire economy"
+        ]
+      };
+    }
+
     // GDP
     if (lowerQuestion.includes('gdp')) {
       return {
@@ -1479,33 +1832,27 @@ export const generateStepByStepSolution = (question: string, subject: string): {
           {
             number: 2,
             title: "How GDP is calculated",
-            content: "GDP includes consumption, investment, government spending, and net exports.",
-            formula: "GDP = C + I + G + (X - M)\nC = Consumption, I = Investment, G = Government spending, X = Exports, M = Imports"
+            content: "GDP can be calculated by adding consumption, investment, government spending, and net exports.",
+            formula: "GDP = C + I + G + (X - M)"
           },
           {
             number: 3,
-            title: "GDP per capita",
-            content: "This divides total GDP by the population to show average economic output per person.",
-            example: "If a country's GDP is $1 trillion and has 100 million people, GDP per capita is $10,000"
+            title: "Why GDP matters",
+            content: "GDP is used to measure economic growth and compare countries' economic performance.",
+            example: "A growing GDP usually means more jobs and higher living standards"
           },
           {
             number: 4,
-            title: "Real vs nominal GDP",
-            content: "Real GDP adjusts for inflation; nominal GDP uses current prices.",
-            example: "Real GDP shows if the economy actually grew or if prices just went up"
-          },
-          {
-            number: 5,
-            title: "Why GDP matters",
-            content: "GDP helps measure economic health and compare countries.",
-            example: "Higher GDP usually means more jobs, higher incomes, and better living standards"
+            title: "Limitations of GDP",
+            content: "GDP doesn't measure everything that matters for quality of life.",
+            example: "It doesn't account for income inequality, environmental damage, or unpaid work"
           }
         ],
         keyPoints: [
-          "GDP is the most common measure of economic size and health",
-          "It includes all final goods and services produced domestically",
-          "GDP per capita is better for comparing living standards",
-          "GDP has limitations - it doesn't measure happiness or environmental quality"
+          "GDP is the most common measure of economic activity",
+          "Higher GDP generally indicates a stronger economy",
+          "GDP growth is important for job creation and prosperity",
+          "GDP has limitations and doesn't measure all aspects of well-being"
         ]
       };
     }
@@ -1524,76 +1871,26 @@ export const generateStepByStepSolution = (question: string, subject: string): {
             number: 2,
             title: "Why it exists",
             content: "Opportunity cost exists because resources (time, money, materials) are limited.",
-            example: "You can't have everything you want, so you must choose"
+            example: "You can't have everything, so every choice means giving up something else"
           },
           {
             number: 3,
             title: "Examples in daily life",
-            content: "Every choice has an opportunity cost.",
-            example: "Studying instead of watching TV (opportunity cost = entertainment), Working instead of sleeping (opportunity cost = rest)"
+            content: "Every decision involves opportunity cost, from small daily choices to major life decisions.",
+            example: "Studying for a test (opportunity cost: watching TV). Going to college (opportunity cost: working full-time)"
           },
           {
             number: 4,
-            title: "For businesses and governments",
-            content: "Organizations also face opportunity costs when making decisions.",
-            example: "A company spending money on advertising can't spend that same money on research"
-          },
-          {
-            number: 5,
             title: "Making better decisions",
-            content: "Understanding opportunity cost helps you make smarter choices.",
+            content: "Understanding opportunity cost helps you make more informed choices.",
             example: "Consider what you're giving up, not just what you're getting"
           }
         ],
         keyPoints: [
           "Every choice has an opportunity cost",
-          "Opportunity cost is about the next best alternative, not all alternatives",
-          "Understanding this concept helps with decision-making",
+          "Opportunity cost is about the best alternative you give up",
+          "Understanding this concept leads to better decision-making",
           "It applies to individuals, businesses, and governments"
-        ]
-      };
-    }
-
-    // Economic systems
-    if (lowerQuestion.includes('capitalism') || lowerQuestion.includes('socialism') || lowerQuestion.includes('economic system')) {
-      return {
-        steps: [
-          {
-            number: 1,
-            title: "What are economic systems?",
-            content: "Economic systems are ways societies organize production, distribution, and consumption of goods and services.",
-            example: "Different countries use different systems to manage their economies"
-          },
-          {
-            number: 2,
-            title: "Capitalism (Market Economy)",
-            content: "Private individuals and businesses own resources and make economic decisions.",
-            example: "United States - businesses compete, prices set by supply and demand"
-          },
-          {
-            number: 3,
-            title: "Socialism (Command Economy)",
-            content: "Government owns most resources and makes major economic decisions.",
-            example: "Cuba, North Korea - government plans what to produce and sets prices"
-          },
-          {
-            number: 4,
-            title: "Mixed Economy",
-            content: "Combines elements of both capitalism and socialism.",
-            example: "Most modern countries - private businesses exist but government regulates and provides some services"
-          },
-          {
-            number: 5,
-            title: "Comparing the systems",
-            content: "Each system has advantages and disadvantages.",
-            example: "Capitalism promotes innovation but can create inequality; socialism aims for equality but may reduce efficiency"
-          }
-        ],
-        keyPoints: [
-          "No pure economic system exists - all are mixed to some degree",
-          "Each system answers: What to produce? How to produce? For whom to produce?",
-          "Most successful modern economies combine market freedom with government regulation",
-          "The best system depends on a society's values and circumstances"
         ]
       };
     }
