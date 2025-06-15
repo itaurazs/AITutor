@@ -19,37 +19,76 @@ function App() {
 
   // Track visitors and online status
   useEffect(() => {
-    // Get current visitor count from localStorage
-    const currentCount = localStorage.getItem('visitorCount');
-    const hasVisited = localStorage.getItem('hasVisitedToday');
-    const today = new Date().toDateString();
-    const lastVisitDate = localStorage.getItem('lastVisitDate');
-
-    if (!hasVisited || lastVisitDate !== today) {
-      // New visitor or new day
-      const newCount = currentCount ? parseInt(currentCount) + 1 : 1;
-      setVisitorCount(newCount);
-      localStorage.setItem('visitorCount', newCount.toString());
-      localStorage.setItem('hasVisitedToday', 'true');
-      localStorage.setItem('lastVisitDate', today);
-    } else {
-      // Returning visitor same day
-      setVisitorCount(currentCount ? parseInt(currentCount) : 0);
-    }
-
-    // Simulate online visitors (in a real app, this would be handled by a backend)
-    const updateOnlineCount = () => {
-      // Generate a realistic online count based on total visitors
-      const totalVisitors = parseInt(localStorage.getItem('visitorCount') || '1');
-      const baseOnline = Math.max(1, Math.floor(totalVisitors * 0.05)); // 5% of total visitors
-      const randomVariation = Math.floor(Math.random() * Math.max(3, Math.floor(totalVisitors * 0.02)));
-      const onlineCount = baseOnline + randomVariation;
-      setOnlineVisitors(onlineCount);
+    // Initialize or get base visitor count
+    const initializeVisitorCount = () => {
+      const storedCount = localStorage.getItem('totalVisitorCount');
+      const lastUpdate = localStorage.getItem('lastVisitorUpdate');
+      const now = Date.now();
+      
+      if (!storedCount) {
+        // First time - start with a realistic base number
+        const baseCount = Math.floor(Math.random() * 500) + 100; // Random between 100-600
+        localStorage.setItem('totalVisitorCount', baseCount.toString());
+        localStorage.setItem('lastVisitorUpdate', now.toString());
+        return baseCount;
+      }
+      
+      const currentCount = parseInt(storedCount);
+      const timeSinceUpdate = now - parseInt(lastUpdate || '0');
+      const hoursElapsed = timeSinceUpdate / (1000 * 60 * 60);
+      
+      // Simulate visitor growth over time (roughly 1-5 visitors per hour)
+      if (hoursElapsed > 0.1) { // Update every 6 minutes minimum
+        const newVisitors = Math.floor(Math.random() * Math.max(1, hoursElapsed * 3)) + 1;
+        const newCount = currentCount + newVisitors;
+        localStorage.setItem('totalVisitorCount', newCount.toString());
+        localStorage.setItem('lastVisitorUpdate', now.toString());
+        return newCount;
+      }
+      
+      return currentCount;
     };
 
-    // Update online count immediately and then every 30 seconds
+    // Set initial visitor count
+    const totalCount = initializeVisitorCount();
+    setVisitorCount(totalCount);
+
+    // Update visitor count periodically to simulate real traffic
+    const visitorInterval = setInterval(() => {
+      const currentCount = parseInt(localStorage.getItem('totalVisitorCount') || '0');
+      const shouldAddVisitor = Math.random() < 0.3; // 30% chance every interval
+      
+      if (shouldAddVisitor) {
+        const newCount = currentCount + Math.floor(Math.random() * 3) + 1; // Add 1-3 visitors
+        localStorage.setItem('totalVisitorCount', newCount.toString());
+        localStorage.setItem('lastVisitorUpdate', Date.now().toString());
+        setVisitorCount(newCount);
+      }
+    }, 45000); // Check every 45 seconds
+
+    // Simulate realistic online visitors
+    const updateOnlineCount = () => {
+      const totalVisitors = parseInt(localStorage.getItem('totalVisitorCount') || '100');
+      
+      // Calculate realistic online count based on total visitors
+      // Typically 2-8% of total visitors are online at any given time
+      const basePercentage = 0.02 + (Math.random() * 0.06); // 2-8%
+      const baseOnline = Math.max(1, Math.floor(totalVisitors * basePercentage));
+      
+      // Add some random variation based on time of day simulation
+      const hour = new Date().getHours();
+      const peakHours = hour >= 15 && hour <= 21; // 3 PM to 9 PM peak
+      const peakMultiplier = peakHours ? 1.2 + (Math.random() * 0.5) : 0.8 + (Math.random() * 0.4);
+      
+      const finalOnlineCount = Math.max(1, Math.floor(baseOnline * peakMultiplier));
+      setOnlineVisitors(finalOnlineCount);
+    };
+
+    // Update online count immediately and then every 20-40 seconds
     updateOnlineCount();
-    const interval = setInterval(updateOnlineCount, 30000);
+    const onlineInterval = setInterval(() => {
+      updateOnlineCount();
+    }, 20000 + Math.random() * 20000); // Random interval between 20-40 seconds
 
     // Mark user as active
     const markActive = () => {
@@ -65,7 +104,8 @@ function App() {
 
     // Cleanup
     return () => {
-      clearInterval(interval);
+      clearInterval(visitorInterval);
+      clearInterval(onlineInterval);
       activityEvents.forEach(event => {
         document.removeEventListener(event, markActive);
       });
