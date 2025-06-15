@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
@@ -14,6 +14,28 @@ function App() {
   const [currentKeyPoints, setCurrentKeyPoints] = useState<string[]>([]);
   const [questionHistory, setQuestionHistory] = useState<Question[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [visitorCount, setVisitorCount] = useState(0);
+
+  // Track visitors
+  useEffect(() => {
+    // Get current visitor count from localStorage
+    const currentCount = localStorage.getItem('visitorCount');
+    const hasVisited = localStorage.getItem('hasVisitedToday');
+    const today = new Date().toDateString();
+    const lastVisitDate = localStorage.getItem('lastVisitDate');
+
+    if (!hasVisited || lastVisitDate !== today) {
+      // New visitor or new day
+      const newCount = currentCount ? parseInt(currentCount) + 1 : 1;
+      setVisitorCount(newCount);
+      localStorage.setItem('visitorCount', newCount.toString());
+      localStorage.setItem('hasVisitedToday', 'true');
+      localStorage.setItem('lastVisitDate', today);
+    } else {
+      // Returning visitor same day
+      setVisitorCount(currentCount ? parseInt(currentCount) : 0);
+    }
+  }, []);
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -82,13 +104,21 @@ function App() {
                 <p className="text-sm text-gray-600">Multi-subject learning companion for grades 7-12</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-            >
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">History</span>
-            </button>
+            <div className="flex items-center space-x-4">
+              {/* Visitor Counter */}
+              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-lg border border-green-200">
+                <Users className="h-4 w-4" />
+                <span className="text-sm font-semibold">{visitorCount.toLocaleString()}</span>
+                <span className="text-xs text-green-600 hidden sm:inline">visitors</span>
+              </div>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">History</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
