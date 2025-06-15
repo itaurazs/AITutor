@@ -499,7 +499,62 @@ export const generateStepByStepSolution = (question: string, subject: string): {
   
   // History Solutions
   if (subject === 'history') {
-    if (lowerQuestion.includes('world war i') || lowerQuestion.includes('wwi')) {
+    // American Civil War - Enhanced pattern matching
+    if (lowerQuestion.includes('american civil war') || 
+        lowerQuestion.includes('civil war') || 
+        lowerQuestion.includes('what started the american civil war') ||
+        lowerQuestion.includes('causes of the civil war') ||
+        lowerQuestion.includes('why did the civil war start')) {
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "The slavery issue",
+            content: "The fundamental disagreement over slavery was the primary cause of the Civil War.",
+            example: "Northern states wanted to abolish slavery, while Southern states depended on slave labor for their economy"
+          },
+          {
+            number: 2,
+            title: "Economic differences",
+            content: "The North and South had very different economic systems that created conflict.",
+            example: "North: Industrial economy with factories. South: Agricultural economy with plantations using slave labor"
+          },
+          {
+            number: 3,
+            title: "States' rights vs federal power",
+            content: "Southern states believed they had the right to make their own decisions about slavery.",
+            example: "They argued that the federal government couldn't tell states what to do about slavery"
+          },
+          {
+            number: 4,
+            title: "Political tensions escalate",
+            content: "Key events increased tensions between North and South.",
+            example: "Missouri Compromise (1820), Kansas-Nebraska Act (1854), Dred Scott case (1857)"
+          },
+          {
+            number: 5,
+            title: "Lincoln's election triggers secession",
+            content: "Abraham Lincoln's election in 1860 led Southern states to secede from the Union.",
+            formula: "South Carolina seceded first (December 1860), followed by 10 other states"
+          },
+          {
+            number: 6,
+            title: "Fort Sumter - the war begins",
+            content: "The first shots of the Civil War were fired at Fort Sumter in South Carolina.",
+            example: "April 12, 1861 - Confederate forces attacked the federal fort, starting the war"
+          }
+        ],
+        keyPoints: [
+          "Slavery was the central issue that divided the nation",
+          "Economic and cultural differences between North and South created lasting tensions",
+          "The conflict was about whether the federal government or states had ultimate authority",
+          "The war lasted from 1861 to 1865 and preserved the Union while ending slavery"
+        ]
+      };
+    }
+
+    // World War I
+    if (lowerQuestion.includes('world war i') || lowerQuestion.includes('wwi') || lowerQuestion.includes('world war 1')) {
       return {
         steps: [
           {
