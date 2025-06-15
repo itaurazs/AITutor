@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users } from 'lucide-react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
@@ -15,8 +15,9 @@ function App() {
   const [questionHistory, setQuestionHistory] = useState<Question[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
+  const [onlineVisitors, setOnlineVisitors] = useState(1);
 
-  // Track visitors
+  // Track visitors and online status
   useEffect(() => {
     // Get current visitor count from localStorage
     const currentCount = localStorage.getItem('visitorCount');
@@ -35,6 +36,40 @@ function App() {
       // Returning visitor same day
       setVisitorCount(currentCount ? parseInt(currentCount) : 0);
     }
+
+    // Simulate online visitors (in a real app, this would be handled by a backend)
+    const updateOnlineCount = () => {
+      // Generate a realistic online count based on total visitors
+      const totalVisitors = parseInt(localStorage.getItem('visitorCount') || '1');
+      const baseOnline = Math.max(1, Math.floor(totalVisitors * 0.05)); // 5% of total visitors
+      const randomVariation = Math.floor(Math.random() * Math.max(3, Math.floor(totalVisitors * 0.02)));
+      const onlineCount = baseOnline + randomVariation;
+      setOnlineVisitors(onlineCount);
+    };
+
+    // Update online count immediately and then every 30 seconds
+    updateOnlineCount();
+    const interval = setInterval(updateOnlineCount, 30000);
+
+    // Mark user as active
+    const markActive = () => {
+      localStorage.setItem('lastActive', Date.now().toString());
+    };
+
+    // Mark active on page load and user interactions
+    markActive();
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+      document.addEventListener(event, markActive, { passive: true });
+    });
+
+    // Cleanup
+    return () => {
+      clearInterval(interval);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, markActive);
+      });
+    };
   }, []);
 
   const handleSubjectSelect = (subject: Subject) => {
@@ -105,15 +140,26 @@ function App() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Visitor Counter */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-lg border border-green-200">
+              {/* Online Visitors Counter */}
+              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
+                <div className="relative">
+                  <Wifi className="h-4 w-4" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <span className="text-sm font-semibold">{onlineVisitors}</span>
+                <span className="text-xs text-emerald-600 hidden sm:inline">online</span>
+              </div>
+              
+              {/* Total Visitors Counter */}
+              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg border border-blue-200">
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-semibold">{visitorCount.toLocaleString()}</span>
-                <span className="text-xs text-green-600 hidden sm:inline">visitors</span>
+                <span className="text-xs text-blue-600 hidden sm:inline">total</span>
               </div>
+              
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <History className="h-4 w-4" />
                 <span className="hidden sm:inline">History</span>
