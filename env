@@ -1,0 +1,8 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyAOsoxcb7bgaNshWAQoTZ-b6_FDOXOZqX0",
+  authDomain: "aitutor-8ff3c.firebaseapp.com",
+  projectId: "aitutor-8ff3c",
+  storageBucket: "aitutor-8ff3c.firebasestorage.app",
+  messagingSenderId: "9087378029",
+  appId: "1:9087378029:web:53026eac6d3fb7b610d564",
+  measurementId: "G-6159K9KSYM"
