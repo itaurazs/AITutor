@@ -49,27 +49,30 @@ export function generateStepByStepSolution(question: string, subjectId: string):
 
   // Customize based on subject
   switch (subjectId) {
+    case 'year7-mathematics':
+    case 'year8-mathematics':
+    case 'year9-mathematics':
     case 'mathematics':
       return {
         steps: [
           {
             number: 1,
             title: "Identify the Mathematical Concept",
-            content: "First, let's determine what type of math problem this is and what concepts we need to apply.",
+            content: "First, let's determine what type of Year 7 maths problem this is and what concepts we need to apply.",
             formula: "",
             calculation: ""
           },
           {
             number: 2,
             title: "Set Up the Problem",
-            content: "Now we'll organize the given information and set up our equation or approach.",
+            content: "Now we'll organize the given information and set up our equation or approach using Year 7 methods.",
             formula: "General form: [equation setup]",
             calculation: ""
           },
           {
             number: 3,
             title: "Solve Step by Step",
-            content: "We'll work through the solution methodically, showing each step.",
+            content: "We'll work through the solution methodically, showing each step clearly as required in Year 7.",
             formula: "",
             calculation: "Step-by-step calculation"
           },
@@ -83,9 +86,10 @@ export function generateStepByStepSolution(question: string, subjectId: string):
         ],
         keyPoints: [
           "Always identify the type of problem before starting",
-          "Show all your work clearly",
+          "Show all your work clearly as required in Year 7 mathematics",
           "Check your answer by substituting back into the original equation",
-          "Make sure your answer is reasonable given the context"
+          "Make sure your answer is reasonable given the context",
+          "Practice similar problems from the Australian Curriculum v9.0"
         ]
       };
 

@@ -5,6 +5,9 @@ export interface Subject {
   color: string;
   bgColor: string;
   description: string;
+  available: boolean;
+  comingSoon?: boolean;
+  availabilityDate?: string;
   sampleQuestions: string[];
 }
 

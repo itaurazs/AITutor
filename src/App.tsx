@@ -12,6 +12,7 @@ import { GamificationBadges } from './components/GamificationBadges';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { UserProfile as UserProfileModal } from './components/UserProfile';
+import { ComingSoonModal } from './components/ComingSoonModal';
 import { Footer } from './components/Footer';
 import { ContactPage } from './components/ContactPage';
 import { AboutPage } from './components/AboutPage';
@@ -39,6 +40,10 @@ function App() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [useAI, setUseAI] = useState(false);
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+
+  // Coming Soon Modal
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+  const [comingSoonSubject, setComingSoonSubject] = useState<Subject | null>(null);
 
   // Initialize auth state
   useEffect(() => {
@@ -156,6 +161,12 @@ function App() {
   };
 
   const handleSubjectSelect = (subject: Subject) => {
+    if (!subject.available) {
+      setComingSoonSubject(subject);
+      setShowComingSoonModal(true);
+      return;
+    }
+
     setSelectedSubject(subject);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
@@ -380,7 +391,7 @@ function App() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Your AI Tutor
                 </h1>
-                <p className="text-sm text-gray-600">Multi-subject learning companion for grades 7-12</p>
+                <p className="text-sm text-gray-600">Australian Curriculum v9.0 aligned for Year 7 Mathematics</p>
               </div>
             </div>
 
@@ -472,11 +483,20 @@ function App() {
                 <div className="bg-gradient-to-r from-blue-100 to-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Brain className="h-8 w-8 text-blue-600" />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Your AI Tutor!</h2>
-                <p className="text-gray-600 max-w-2xl mx-auto">
-                  I'm here to help you understand concepts across multiple subjects. Choose a subject below to get started 
-                  with step-by-step explanations that help you learn, not just get answers.
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Master Year 7 Mathematics with AI</h2>
+                <p className="text-gray-600 max-w-2xl mx-auto mb-4">
+                  Personalized tutoring for Australian students following Curriculum v9.0. 
+                  Get step-by-step explanations that help you learn, not just get answers.
                 </p>
+                <button
+                  onClick={() => {
+                    const year7Math = subjects.find(s => s.id === 'year7-mathematics');
+                    if (year7Math) handleSubjectSelect(year7Math);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl"
+                >
+                  Start Your Year 7 Maths Journey
+                </button>
                 
                 {/* AI Status Banner */}
                 {aiConnectionStatus !== 'connected' && (
@@ -520,8 +540,8 @@ function App() {
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-xl">
                   <Brain className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-green-900">Multi-Subject</h3>
-                  <p className="text-sm text-green-700">Math, Science, English, History & more</p>
+                  <h3 className="font-semibold text-green-900">Curriculum Aligned</h3>
+                  <p className="text-sm text-green-700">Australian Curriculum v9.0 focused</p>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-xl">
                   <Zap className="h-8 w-8 text-purple-600 mx-auto mb-2" />
@@ -549,7 +569,7 @@ function App() {
         )}
 
         {/* Subject-Specific Interface */}
-        {selectedSubject && (
+        {selectedSubject && selectedSubject.available && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -890,6 +910,13 @@ function App() {
         isOpen={showSubscriptionModal}
         onClose={() => setShowSubscriptionModal(false)}
         onSuccess={handleSubscriptionSuccess}
+      />
+
+      <ComingSoonModal
+        isOpen={showComingSoonModal}
+        onClose={() => setShowComingSoonModal(false)}
+        subjectName={comingSoonSubject?.name || ''}
+        availabilityDate={comingSoonSubject?.availabilityDate}
       />
 
       {user && (
