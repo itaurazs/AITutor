@@ -10,8 +10,16 @@ import { SampleQuestions } from './components/SampleQuestions';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { UserProfile as UserProfileModal } from './components/UserProfile';
+import { Footer } from './components/Footer';
+import { ContactPage } from './components/ContactPage';
+import { AboutPage } from './components/AboutPage';
+import { FAQPage } from './components/FAQPage';
+import { TestimonialsPage } from './components/TestimonialsPage';
+
+type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
 function App() {
+  const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -133,6 +141,14 @@ function App() {
       });
     };
   }, []);
+
+  const handleNavigate = (page: CurrentPage) => {
+    setCurrentPage(page);
+    setSelectedSubject(null);
+    setCurrentSteps([]);
+    setCurrentKeyPoints([]);
+    setCurrentQuestion('');
+  };
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
@@ -297,6 +313,23 @@ function App() {
     if (days >= 3) return '✨';
     return '💫';
   };
+
+  // Render different pages
+  if (currentPage === 'contact') {
+    return <ContactPage onBack={() => handleNavigate('home')} />;
+  }
+
+  if (currentPage === 'about') {
+    return <AboutPage onBack={() => handleNavigate('home')} />;
+  }
+
+  if (currentPage === 'faq') {
+    return <FAQPage onBack={() => handleNavigate('home')} />;
+  }
+
+  if (currentPage === 'testimonials') {
+    return <TestimonialsPage onBack={() => handleNavigate('home')} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -841,6 +874,9 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <Footer onNavigate={handleNavigate} />
 
       {/* Modals */}
       <AuthModal
