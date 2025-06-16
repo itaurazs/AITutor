@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { User, Settings, LogOut, Crown, Zap, Gift, TrendingUp, Calendar, Award, Target, X } from 'lucide-react';
+import { User, Settings, LogOut, Crown, Zap, Gift, TrendingUp, Calendar, Award, Target, X, Edit } from 'lucide-react';
 import authService, { UserProfile as UserProfileType } from '../services/authService';
 import { subscriptionService } from '../services/subscriptionService';
+import { AvatarSelector } from './AvatarSelector';
 
 interface UserProfileProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
   onSignOut
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
   if (!isOpen) return null;
 
@@ -33,6 +35,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({
       console.error('Error cancelling subscription:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAvatarChange = async (avatarUrl: string) => {
+    try {
+      await authService.updateAvatar(avatarUrl);
+      setShowAvatarSelector(false);
+      // The parent component should refresh the user profile
+      window.location.reload(); // Simple refresh for now
+    } catch (error) {
+      console.error('Error updating avatar:', error);
     }
   };
 
@@ -75,8 +88,18 @@ export const UserProfile: React.FC<UserProfileProps> = ({
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <User className="h-8 w-8 text-white" />
+              <div className="relative">
+                <img
+                  src={userProfile.avatar || '/avatars/avatar1.svg'}
+                  alt="User Avatar"
+                  className="w-16 h-16 rounded-full border-2 border-white"
+                />
+                <button
+                  onClick={() => setShowAvatarSelector(true)}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-white text-blue-600 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                >
+                  <Edit className="h-3 w-3" />
+                </button>
               </div>
               <div>
                 <h2 className="text-2xl font-bold">{userProfile.displayName}</h2>
@@ -95,6 +118,28 @@ export const UserProfile: React.FC<UserProfileProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Avatar Selector Modal */}
+        {showAvatarSelector && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Change Avatar</h3>
+                <button
+                  onClick={() => setShowAvatarSelector(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <AvatarSelector
+                selectedAvatar={userProfile.avatar}
+                onSelect={handleAvatarChange}
+                size="medium"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-6 space-y-6">

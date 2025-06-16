@@ -379,7 +379,11 @@ function App() {
                   onClick={() => setShowUserProfile(true)}
                   className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200"
                 >
-                  <User className="h-4 w-4" />
+                  <img
+                    src={user.avatar || '/avatars/avatar1.svg'}
+                    alt="User Avatar"
+                    className="w-6 h-6 rounded-full"
+                  />
                   <span className="hidden sm:inline">{user.displayName}</span>
                   <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
                     user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :

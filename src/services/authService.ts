@@ -19,6 +19,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
+  avatar?: string; // Added avatar field
   tier: UserTier;
   subscriptionId?: string;
   subscriptionStatus: 'active' | 'cancelled' | 'expired' | 'none';
@@ -109,7 +110,7 @@ class AuthService {
   }
 
   // Sign up with email and password
-  async signUp(email: string, password: string, displayName: string): Promise<UserProfile> {
+  async signUp(email: string, password: string, displayName: string, avatar?: string): Promise<UserProfile> {
     if (!auth) {
       throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
     }
@@ -132,6 +133,7 @@ class AuthService {
         uid: user.uid,
         email: user.email!,
         displayName,
+        avatar: avatar || '/avatars/avatar1.svg', // Default avatar
         tier: 'free',
         subscriptionStatus: 'none',
         createdAt: new Date(),
@@ -250,6 +252,7 @@ class AuthService {
         uid: user.uid,
         email: user.email!,
         displayName: user.displayName || 'User',
+        avatar: '/avatars/avatar1.svg', // Default avatar for Google sign-in
         tier: 'free',
         subscriptionStatus: 'none',
         createdAt: new Date(),
@@ -295,7 +298,8 @@ class AuthService {
               ...data,
               createdAt: data.createdAt?.toDate() || new Date(),
               lastLogin: data.lastLogin?.toDate() || new Date(),
-              subscriptionExpiry: data.subscriptionExpiry?.toDate()
+              subscriptionExpiry: data.subscriptionExpiry?.toDate(),
+              avatar: data.avatar || '/avatars/avatar1.svg' // Ensure avatar exists
             } as UserProfile;
 
             // Update last login
@@ -389,6 +393,7 @@ class AuthService {
           uid: this.currentUser.uid,
           email: this.currentUser.email!,
           displayName: this.currentUser.displayName || 'User',
+          avatar: '/avatars/avatar1.svg',
           tier: 'free',
           subscriptionStatus: 'none',
           createdAt: new Date(),
@@ -421,7 +426,8 @@ class AuthService {
           ...data,
           createdAt: data.createdAt?.toDate() || new Date(),
           lastLogin: data.lastLogin?.toDate() || new Date(),
-          subscriptionExpiry: data.subscriptionExpiry?.toDate()
+          subscriptionExpiry: data.subscriptionExpiry?.toDate(),
+          avatar: data.avatar || '/avatars/avatar1.svg' // Ensure avatar exists
         } as UserProfile;
       } else {
         // Create a basic profile if document doesn't exist
@@ -430,6 +436,7 @@ class AuthService {
             uid: this.currentUser.uid,
             email: this.currentUser.email!,
             displayName: this.currentUser.displayName || 'User',
+            avatar: '/avatars/avatar1.svg',
             tier: 'free',
             subscriptionStatus: 'none',
             createdAt: new Date(),
@@ -456,6 +463,7 @@ class AuthService {
           uid: this.currentUser.uid,
           email: this.currentUser.email!,
           displayName: this.currentUser.displayName || 'User',
+          avatar: '/avatars/avatar1.svg',
           tier: 'free',
           subscriptionStatus: 'none',
           createdAt: new Date(),
@@ -495,6 +503,11 @@ class AuthService {
     if (this.userProfile) {
       this.userProfile = { ...this.userProfile, ...updates };
     }
+  }
+
+  // Update user avatar
+  async updateAvatar(avatarUrl: string): Promise<void> {
+    await this.updateUserProfile({ avatar: avatarUrl });
   }
 
   // Record AI usage

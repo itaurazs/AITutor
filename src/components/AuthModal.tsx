@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, ExternalLink, Wifi, Clock } from 'lucide-react';
 import authService from '../services/authService';
+import { AvatarSelector } from './AvatarSelector';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -16,7 +17,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     email: '',
     password: '',
     displayName: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    avatar: '/avatars/avatar1.svg'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +53,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       [e.target.name]: e.target.value
     }));
     setError('');
+  };
+
+  const handleAvatarSelect = (avatarUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      avatar: avatarUrl
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -94,7 +103,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           onSuccess();
           break;
         case 'signup':
-          await authService.signUp(formData.email, formData.password, formData.displayName);
+          await authService.signUp(formData.email, formData.password, formData.displayName, formData.avatar);
           onSuccess();
           break;
         case 'reset':
@@ -149,7 +158,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       email: '',
       password: '',
       displayName: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      avatar: '/avatars/avatar1.svg'
     });
     setError('');
     setSuccess('');
@@ -257,6 +267,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
             </div>
           </div>
+
+          {/* Avatar Selection for Sign Up */}
+          {mode === 'signup' && (
+            <div className="mb-6">
+              <AvatarSelector
+                selectedAvatar={formData.avatar}
+                onSelect={handleAvatarSelect}
+                size="medium"
+              />
+            </div>
+          )}
 
           {/* Google Sign In */}
           {mode !== 'reset' && authService.isFirebaseConfigured() && (
