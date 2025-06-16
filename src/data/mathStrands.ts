@@ -10,32 +10,37 @@ export interface MathStrand {
   progress: number; // 0-100
   totalLessons: number;
   completedLessons: number;
+  curriculumCodes?: string[];
 }
 
 export const year7MathStrands: MathStrand[] = [
   {
     id: 'number',
     name: 'Number',
-    description: 'Integers, fractions, decimals, percentages, and financial mathematics',
+    description: 'Integers, fractions, decimals, percentages, and financial mathematics with Australian context',
     icon: 'Calculator',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     topics: [
-      'Positive and negative integers',
-      'Adding and subtracting integers',
-      'Fractions and mixed numbers',
-      'Decimal operations',
-      'Percentage calculations',
-      'Financial mathematics',
-      'Simple interest',
-      'Profit and loss'
+      'Positive and negative integers (AC9M7N01)',
+      'Adding and subtracting integers (AC9M7N02)',
+      'Fractions and mixed numbers (AC9M7N03)',
+      'Decimal operations (AC9M7N04)',
+      'Percentage calculations (AC9M7N05)',
+      'Financial mathematics with GST (AC9M7N06)',
+      'Simple interest calculations (AC9M7N07)',
+      'Profit, loss and Australian retail (AC9M7N08)'
     ],
+    curriculumCodes: ['AC9M7N01', 'AC9M7N02', 'AC9M7N03', 'AC9M7N04', 'AC9M7N05', 'AC9M7N06', 'AC9M7N07', 'AC9M7N08'],
     sampleQuestions: [
-      'Calculate: (-5) + 8 - (-3)',
-      'Convert 3/4 to a decimal and percentage',
-      'Find 25% of $120',
-      'Calculate simple interest on $500 at 4% for 2 years',
-      'What is the profit if an item costs $80 and sells for $100?'
+      'Sarah is shopping at Woolworths and buys 3 items for $4.50 each. Calculate the total including 10% GST.',
+      'The MCG has a capacity of 100,024 people. If 87,543 people attend a match, how many empty seats are there?',
+      'Convert the fraction 3/4 to a decimal and percentage, then calculate 3/4 of the distance from Sydney to Melbourne (878 km).',
+      'A student scores 17 out of 20 on a maths test. What percentage did they achieve?',
+      'Calculate the simple interest on $2,500 invested at 3.5% per annum for 2 years (typical Australian savings rate).',
+      'Coles sells a jacket for $89.95. If this includes 10% GST, what was the original price before GST?',
+      'The population of Brisbane is approximately 2,560,720. Round this to the nearest 100,000.',
+      'If the temperature in Melbourne drops from 8°C to -3°C overnight, what is the temperature change?'
     ],
     progress: 0,
     totalLessons: 12,

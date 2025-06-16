@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calculator, Variable, Ruler, Shapes, BarChart3, Dice6, CheckCircle, Play, Lock, Award, Clock, BookOpen, Target } from 'lucide-react';
+import { ArrowLeft, Calculator, Variable, Ruler, Shapes, BarChart3, Dice6, CheckCircle, Play, Lock, Award, Clock, BookOpen, Target, MapPin, DollarSign } from 'lucide-react';
 import { MathStrand } from '../data/mathStrands';
 import { SampleQuestions } from './SampleQuestions';
 
@@ -34,6 +34,44 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
     completed: index < strand.completedLessons,
     locked: false // For now, no lessons are locked
   }));
+
+  // Australian context examples for Number strand
+  const getAustralianContextExamples = () => {
+    if (strand.id === 'number') {
+      return [
+        {
+          title: "Australian Retail & GST",
+          icon: DollarSign,
+          examples: [
+            "Woolworths, Coles pricing with 10% GST",
+            "JB Hi-Fi electronics with GST calculations",
+            "Bunnings hardware store discounts"
+          ]
+        },
+        {
+          title: "Australian Geography & Numbers",
+          icon: MapPin,
+          examples: [
+            "AFL crowd sizes (MCG: 100,024 capacity)",
+            "City populations (Sydney: 5.3M, Melbourne: 5.1M)",
+            "Distances (Sydney to Melbourne: 878km)"
+          ]
+        },
+        {
+          title: "Australian Financial Context",
+          icon: Calculator,
+          examples: [
+            "Australian interest rates (RBA cash rate)",
+            "School test scores and percentages",
+            "Weather probabilities in Australian cities"
+          ]
+        }
+      ];
+    }
+    return [];
+  };
+
+  const australianExamples = getAustralianContextExamples();
 
   return (
     <div className="space-y-6">
@@ -100,6 +138,43 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Australian Context Examples (for Number strand) */}
+          {australianExamples.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="bg-green-100 p-2 rounded-lg">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Australian Context Examples</h2>
+                  <p className="text-sm text-gray-600">Real-world Australian examples used in this strand</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {australianExamples.map((category, index) => {
+                  const Icon = category.icon;
+                  return (
+                    <div key={index} className="bg-gradient-to-br from-blue-50 to-green-50 rounded-xl p-4 border border-blue-200">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Icon className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-semibold text-gray-900 text-sm">{category.title}</h3>
+                      </div>
+                      <ul className="space-y-1">
+                        {category.examples.map((example, exIndex) => (
+                          <li key={exIndex} className="text-xs text-gray-700 flex items-start">
+                            <span className="text-blue-500 mr-1">•</span>
+                            <span>{example}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Lessons/Topics */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Learning Path</h2>
@@ -144,6 +219,11 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
                           }`}>
                             {lesson.difficulty}
                           </span>
+                          {strand.curriculumCodes && strand.curriculumCodes[index] && (
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-mono">
+                              {strand.curriculumCodes[index]}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -171,7 +251,12 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-blue-800">
                   This topic covers the fundamental concepts of {selectedTopic.toLowerCase()}. 
-                  You'll learn through step-by-step explanations, worked examples, and practice questions.
+                  You'll learn through step-by-step explanations, worked examples with Australian context, and practice questions.
+                  {strand.id === 'number' && (
+                    <span className="block mt-2 font-medium">
+                      🇦🇺 Includes real Australian examples like GST calculations, AFL crowds, and city populations!
+                    </span>
+                  )}
                 </p>
               </div>
               <button
@@ -218,6 +303,12 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
                 <span className="text-orange-600 mr-2">•</span>
                 Practice the sample questions before moving on
               </li>
+              {strand.id === 'number' && (
+                <li className="flex items-start">
+                  <span className="text-orange-600 mr-2">•</span>
+                  Remember GST is 10% in Australia and often included in prices
+                </li>
+              )}
               <li className="flex items-start">
                 <span className="text-orange-600 mr-2">•</span>
                 Review previous topics if you're struggling
@@ -245,6 +336,21 @@ export const MathStrandDetail: React.FC<MathStrandDetailProps> = ({
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-800">{strand.name} Strand</span>
               </div>
+              {strand.curriculumCodes && (
+                <div className="mt-3 pt-3 border-t border-green-200">
+                  <h4 className="text-sm font-semibold text-green-900 mb-2">Curriculum Codes:</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {strand.curriculumCodes.slice(0, 4).map((code, index) => (
+                      <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-mono">
+                        {code}
+                      </span>
+                    ))}
+                    {strand.curriculumCodes.length > 4 && (
+                      <span className="text-xs text-green-700">+{strand.curriculumCodes.length - 4} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -49,6 +49,47 @@ export function generateStepByStepSolution(question: string, subjectId: string):
 
   // Customize based on subject
   switch (subjectId) {
+    case 'number':
+      return {
+        steps: [
+          {
+            number: 1,
+            title: "Identify the Number Concept",
+            content: "First, let's determine what type of number problem this is - integers, fractions, decimals, percentages, or financial maths.",
+            formula: "",
+            calculation: ""
+          },
+          {
+            number: 2,
+            title: "Set Up the Problem",
+            content: "Now we'll organize the given information. For Australian context problems, remember to include GST (10%) where applicable.",
+            formula: "GST = Original Price × 0.10",
+            calculation: ""
+          },
+          {
+            number: 3,
+            title: "Solve Step by Step",
+            content: "We'll work through the solution methodically, showing each calculation clearly as required in Year 7.",
+            formula: "",
+            calculation: "Step-by-step calculation with Australian context"
+          },
+          {
+            number: 4,
+            title: "Check and Interpret",
+            content: "Finally, let's check our answer makes sense in the Australian context (e.g., reasonable prices, distances, populations).",
+            formula: "",
+            calculation: "Final answer with appropriate units"
+          }
+        ],
+        keyPoints: [
+          "Remember that GST in Australia is 10% and is often included in retail prices",
+          "Use Australian examples like AFL crowds, city populations, and distances between major cities",
+          "Show all calculations clearly as required in Year 7 mathematics",
+          "Check your answer makes sense in the real-world Australian context",
+          "Practice with Australian currency ($) and metric measurements"
+        ]
+      };
+
     case 'year7-mathematics':
     case 'year8-mathematics':
     case 'year9-mathematics':
