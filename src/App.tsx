@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi } from 'lucide-react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
+import { aiService } from './services/aiService';
+import { userTierManager, UserTier } from './services/userTierManager';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
+import { UserTierBadge } from './components/UserTierBadge';
+import { UpgradeModal } from './components/UpgradeModal';
+import { UsageLimitModal } from './components/UsageLimitModal';
 
 function App() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -16,8 +21,36 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
   const [onlineVisitors, setOnlineVisitors] = useState(1);
+  
+  // User tier management
+  const [userTier, setUserTier] = useState<UserTier>('free');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitType, setLimitType] = useState<'daily' | 'monthly' | 'total'>('daily');
+  const [usageStats, setUsageStats] = useState(userTierManager.getUsageStats());
+  const [useAI, setUseAI] = useState(false);
+  const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
-  // Track visitors and online status
+  // Initialize user data and check AI connection
+  useEffect(() => {
+    const userData = userTierManager.getCurrentUser();
+    setUserTier(userData.tier);
+    setUsageStats(userTierManager.getUsageStats());
+
+    // Check AI connection
+    const checkAIConnection = async () => {
+      try {
+        const isConnected = await aiService.testConnection();
+        setAiConnectionStatus(isConnected ? 'connected' : 'disconnected');
+      } catch {
+        setAiConnectionStatus('disconnected');
+      }
+    };
+
+    checkAIConnection();
+  }, []);
+
+  // Track visitors and online status (existing code)
   useEffect(() => {
     // Initialize or get base visitor count
     const initializeVisitorCount = () => {
@@ -26,8 +59,7 @@ function App() {
       const now = Date.now();
       
       if (!storedCount) {
-        // First time - start with a realistic base number
-        const baseCount = Math.floor(Math.random() * 500) + 100; // Random between 100-600
+        const baseCount = Math.floor(Math.random() * 500) + 100;
         localStorage.setItem('totalVisitorCount', baseCount.toString());
         localStorage.setItem('lastVisitorUpdate', now.toString());
         return baseCount;
@@ -37,8 +69,7 @@ function App() {
       const timeSinceUpdate = now - parseInt(lastUpdate || '0');
       const hoursElapsed = timeSinceUpdate / (1000 * 60 * 60);
       
-      // Simulate visitor growth over time (roughly 1-5 visitors per hour)
-      if (hoursElapsed > 0.1) { // Update every 6 minutes minimum
+      if (hoursElapsed > 0.1) {
         const newVisitors = Math.floor(Math.random() * Math.max(1, hoursElapsed * 3)) + 1;
         const newCount = currentCount + newVisitors;
         localStorage.setItem('totalVisitorCount', newCount.toString());
@@ -49,60 +80,45 @@ function App() {
       return currentCount;
     };
 
-    // Set initial visitor count
     const totalCount = initializeVisitorCount();
     setVisitorCount(totalCount);
 
-    // Update visitor count periodically to simulate real traffic
     const visitorInterval = setInterval(() => {
       const currentCount = parseInt(localStorage.getItem('totalVisitorCount') || '0');
-      const shouldAddVisitor = Math.random() < 0.3; // 30% chance every interval
+      const shouldAddVisitor = Math.random() < 0.3;
       
       if (shouldAddVisitor) {
-        const newCount = currentCount + Math.floor(Math.random() * 3) + 1; // Add 1-3 visitors
+        const newCount = currentCount + Math.floor(Math.random() * 3) + 1;
         localStorage.setItem('totalVisitorCount', newCount.toString());
         localStorage.setItem('lastVisitorUpdate', Date.now().toString());
         setVisitorCount(newCount);
       }
-    }, 45000); // Check every 45 seconds
+    }, 45000);
 
-    // Simulate realistic online visitors
     const updateOnlineCount = () => {
       const totalVisitors = parseInt(localStorage.getItem('totalVisitorCount') || '100');
-      
-      // Calculate realistic online count based on total visitors
-      // Typically 2-8% of total visitors are online at any given time
-      const basePercentage = 0.02 + (Math.random() * 0.06); // 2-8%
+      const basePercentage = 0.02 + (Math.random() * 0.06);
       const baseOnline = Math.max(1, Math.floor(totalVisitors * basePercentage));
-      
-      // Add some random variation based on time of day simulation
       const hour = new Date().getHours();
-      const peakHours = hour >= 15 && hour <= 21; // 3 PM to 9 PM peak
+      const peakHours = hour >= 15 && hour <= 21;
       const peakMultiplier = peakHours ? 1.2 + (Math.random() * 0.5) : 0.8 + (Math.random() * 0.4);
-      
       const finalOnlineCount = Math.max(1, Math.floor(baseOnline * peakMultiplier));
       setOnlineVisitors(finalOnlineCount);
     };
 
-    // Update online count immediately and then every 20-40 seconds
     updateOnlineCount();
-    const onlineInterval = setInterval(() => {
-      updateOnlineCount();
-    }, 20000 + Math.random() * 20000); // Random interval between 20-40 seconds
+    const onlineInterval = setInterval(updateOnlineCount, 20000 + Math.random() * 20000);
 
-    // Mark user as active
     const markActive = () => {
       localStorage.setItem('lastActive', Date.now().toString());
     };
 
-    // Mark active on page load and user interactions
     markActive();
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     activityEvents.forEach(event => {
       document.addEventListener(event, markActive, { passive: true });
     });
 
-    // Cleanup
     return () => {
       clearInterval(visitorInterval);
       clearInterval(onlineInterval);
@@ -123,26 +139,65 @@ function App() {
     e.preventDefault();
     if (!currentQuestion.trim() || !selectedSubject) return;
 
+    // Check usage limits
+    const canUse = userTierManager.canMakeAIRequest();
+    if (!canUse.allowed) {
+      // Determine limit type based on the reason
+      if (canUse.reason?.includes('Daily limit')) {
+        setLimitType('daily');
+      } else if (canUse.reason?.includes('Monthly limit')) {
+        setLimitType('monthly');
+      } else {
+        setLimitType('total');
+      }
+      setShowLimitModal(true);
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const solution = generateStepByStepSolution(currentQuestion, selectedSubject.id);
-    setCurrentSteps(solution.steps);
-    setCurrentKeyPoints(solution.keyPoints);
-    
-    const newQuestion: Question = {
-      id: Date.now().toString(),
-      question: currentQuestion,
-      subject: selectedSubject.name,
-      steps: solution.steps,
-      keyPoints: solution.keyPoints,
-      timestamp: new Date(),
-    };
-    
-    setQuestionHistory(prev => [newQuestion, ...prev]);
-    setIsLoading(false);
+    try {
+      let solution;
+      
+      if (useAI && aiConnectionStatus === 'connected') {
+        // Use AI service
+        solution = await aiService.generateSolution(currentQuestion, selectedSubject);
+        // Record AI usage
+        userTierManager.recordAIUsage();
+        setUsageStats(userTierManager.getUsageStats());
+      } else {
+        // Fallback to local generation
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const localSolution = generateStepByStepSolution(currentQuestion, selectedSubject.id);
+        solution = {
+          steps: localSolution.steps,
+          keyPoints: localSolution.keyPoints,
+          explanation: 'Generated using local algorithms'
+        };
+      }
+      
+      setCurrentSteps(solution.steps);
+      setCurrentKeyPoints(solution.keyPoints);
+      
+      const newQuestion: Question = {
+        id: Date.now().toString(),
+        question: currentQuestion,
+        subject: selectedSubject.name,
+        steps: solution.steps,
+        keyPoints: solution.keyPoints,
+        timestamp: new Date(),
+      };
+      
+      setQuestionHistory(prev => [newQuestion, ...prev]);
+    } catch (error) {
+      console.error('Error generating solution:', error);
+      // Fallback to local generation on error
+      const localSolution = generateStepByStepSolution(currentQuestion, selectedSubject.id);
+      setCurrentSteps(localSolution.steps);
+      setCurrentKeyPoints(localSolution.keyPoints);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSampleQuestion = (question: string) => {
@@ -155,11 +210,29 @@ function App() {
     setCurrentQuestion(item.question);
     setCurrentSteps(item.steps);
     setCurrentKeyPoints(item.keyPoints);
-    // Find and select the subject
     const subject = subjects.find(s => s.name === item.subject);
     if (subject) {
       setSelectedSubject(subject);
     }
+  };
+
+  const handleUpgrade = (tier: UserTier) => {
+    if (tier === 'free') {
+      userTierManager.downgradeToFree();
+    } else {
+      // In a real app, this would integrate with a payment processor
+      userTierManager.simulateSubscription(tier, 30);
+    }
+    
+    const userData = userTierManager.getCurrentUser();
+    setUserTier(userData.tier);
+    setUsageStats(userTierManager.getUsageStats());
+    setShowUpgradeModal(false);
+  };
+
+  const getRemainingQuestions = () => {
+    const canUse = userTierManager.canMakeAIRequest();
+    return canUse.remainingDaily || 0;
   };
 
   return (
@@ -180,6 +253,31 @@ function App() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {/* AI Toggle */}
+              <div className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useAI}
+                    onChange={(e) => setUseAI(e.target.checked)}
+                    disabled={aiConnectionStatus !== 'connected'}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">Use AI</span>
+                </label>
+                <div className={`w-2 h-2 rounded-full ${
+                  aiConnectionStatus === 'connected' ? 'bg-green-500' : 
+                  aiConnectionStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></div>
+              </div>
+
+              {/* User Tier Badge */}
+              <UserTierBadge
+                tier={userTier}
+                remainingQuestions={getRemainingQuestions()}
+                onClick={() => setShowUpgradeModal(true)}
+              />
+              
               {/* Online Visitors Counter */}
               <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
                 <div className="relative">
@@ -224,6 +322,21 @@ function App() {
                   I'm here to help you understand concepts across multiple subjects. Choose a subject below to get started 
                   with step-by-step explanations that help you learn, not just get answers.
                 </p>
+                
+                {/* AI Status Banner */}
+                {aiConnectionStatus !== 'connected' && (
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <span className="text-sm text-yellow-800">
+                        {aiConnectionStatus === 'checking' 
+                          ? 'Checking AI connection...' 
+                          : 'AI service unavailable - using local solutions'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -301,6 +414,11 @@ function App() {
                     <div className={`h-5 w-5 ${selectedSubject.color}`}></div>
                   </div>
                   Ask Your {selectedSubject.name} Question
+                  {useAI && aiConnectionStatus === 'connected' && (
+                    <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                      AI Powered
+                    </span>
+                  )}
                 </h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <textarea
@@ -318,7 +436,12 @@ function App() {
                     {isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        <span>Working through the steps...</span>
+                        <span>
+                          {useAI && aiConnectionStatus === 'connected' 
+                            ? 'AI is thinking...' 
+                            : 'Working through the steps...'
+                          }
+                        </span>
                       </>
                     ) : (
                       <>
@@ -427,6 +550,52 @@ function App() {
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Usage Stats */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Usage</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Daily Questions</span>
+                    <span className="font-semibold">
+                      {usageStats.current.daily.count} / {
+                        usageStats.limits.dailyQuestions === Infinity 
+                          ? '∞' 
+                          : usageStats.limits.dailyQuestions
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Monthly Questions</span>
+                    <span className="font-semibold">
+                      {usageStats.current.monthly.count} / {
+                        usageStats.limits.monthlyQuestions === Infinity 
+                          ? '∞' 
+                          : usageStats.limits.monthlyQuestions
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total Questions</span>
+                    <span className="font-semibold">
+                      {usageStats.current.total} / {
+                        usageStats.limits.totalQuestions === Infinity 
+                          ? '∞' 
+                          : usageStats.limits.totalQuestions.toLocaleString()
+                      }
+                    </span>
+                  </div>
+                </div>
+                
+                {userTier === 'free' && (
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm font-semibold"
+                  >
+                    Upgrade for More Questions
+                  </button>
+                )}
+              </div>
+
               {/* Sample Questions */}
               <SampleQuestions
                 subject={selectedSubject}
@@ -438,7 +607,7 @@ function App() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Questions</h3>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {questionHistory.slice(0, 5).map((item) => (
+                    {questionHistory.slice(0, userTier === 'free' ? 10 : questionHistory.length).map((item) => (
                       <div
                         key={item.id}
                         className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
@@ -485,6 +654,25 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentTier={userTier}
+        onUpgrade={handleUpgrade}
+      />
+
+      <UsageLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        limitType={limitType}
+        currentTier={userTier}
+        onUpgrade={() => {
+          setShowLimitModal(false);
+          setShowUpgradeModal(true);
+        }}
+      />
     </div>
   );
 }
