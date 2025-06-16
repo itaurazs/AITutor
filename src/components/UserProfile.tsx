@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Settings, LogOut, Crown, Zap, Gift, TrendingUp, Calendar, Award, Target } from 'lucide-react';
+import { User, Settings, LogOut, Crown, Zap, Gift, TrendingUp, Calendar, Award, Target, X } from 'lucide-react';
 import authService, { UserProfile as UserProfileType } from '../services/authService';
 import { subscriptionService } from '../services/subscriptionService';
 
@@ -89,9 +89,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors"
+              className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white hover:bg-opacity-10 rounded-lg"
             >
-              <Settings className="h-6 w-6" />
+              <X className="h-6 w-6" />
             </button>
           </div>
         </div>
@@ -231,14 +231,22 @@ export const UserProfile: React.FC<UserProfileProps> = ({
             </div>
           </div>
 
-          {/* Sign Out Button */}
-          <button
-            onClick={onSignOut}
-            className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-semibold flex items-center justify-center space-x-2"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+            >
+              Close
+            </button>
+            <button
+              onClick={onSignOut}
+              className="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-semibold flex items-center justify-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
