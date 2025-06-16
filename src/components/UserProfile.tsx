@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Settings, LogOut, Crown, Zap, Gift, TrendingUp, Calendar, Award, Target } from 'lucide-react';
-import { authService, UserProfile as UserProfileType } from '../services/authService';
+import authService, { UserProfile as UserProfileType } from '../services/authService';
 import { subscriptionService } from '../services/subscriptionService';
 
 interface UserProfileProps {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Check, Crown, Zap, Star, CreditCard } from 'lucide-react';
 import { subscriptionService, SUBSCRIPTION_PLANS } from '../services/subscriptionService';
-import { authService } from '../services/authService';
+import authService from '../services/authService';
 
 interface SubscriptionModalProps {
   isOpen: boolean;

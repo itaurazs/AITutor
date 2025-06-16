@@ -4,7 +4,7 @@ import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
-import { authService, UserProfile } from './services/authService';
+import authService, { UserProfile } from './services/authService';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
 import { AuthModal } from './components/AuthModal';
