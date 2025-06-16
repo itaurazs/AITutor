@@ -510,52 +510,6 @@ function App() {
                     </div>
                   </div>
                 )}
-
-                {/* User Progress Display - Only show when signed in */}
-                {user && (
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-                    {/* Learning Streak */}
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Flame className="h-5 w-5 text-orange-600" />
-                        <div className="text-center">
-                          <div className="text-xl font-bold text-orange-900 flex items-center justify-center">
-                            {getStreakEmoji(user.progress.streakDays)}
-                            <span className="ml-1">{user.progress.streakDays}</span>
-                          </div>
-                          <div className="text-sm text-orange-700">Day Streak</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Today's Progress */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Target className="h-5 w-5 text-blue-600" />
-                        <div className="text-center">
-                          <div className="text-xl font-bold text-blue-900">
-                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                              ? user.usage.daily.count 
-                              : 0
-                            }
-                          </div>
-                          <div className="text-sm text-blue-700">Today's Questions</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Total Questions */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Brain className="h-5 w-5 text-green-600" />
-                        <div className="text-center">
-                          <div className="text-xl font-bold text-green-900">{user.progress.totalQuestions}</div>
-                          <div className="text-sm text-green-700">Total Questions</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -769,7 +723,7 @@ function App() {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* User Stats */}
+              {/* User Stats - Only show when signed in */}
               {user && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Progress</h3>
