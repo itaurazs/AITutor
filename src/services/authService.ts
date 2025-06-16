@@ -251,17 +251,28 @@ class AuthService {
     } catch (error: any) {
       console.error('Google sign in error:', error);
       
-      // Provide more specific error messages
+      // Provide more specific error messages and preserve the original error code
       if (error.code === 'auth/popup-closed-by-user') {
-        throw new Error('Sign-in was cancelled. Please try again.');
+        const customError = new Error('Sign-in was cancelled. Please try again.');
+        customError.code = error.code;
+        throw customError;
       } else if (error.code === 'auth/popup-blocked') {
-        throw new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
+        const customError = new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
+        customError.code = error.code;
+        throw customError;
       } else if (error.code === 'auth/unauthorized-domain') {
-        throw new Error('This domain is not authorized for Google Sign-In. Please contact support.');
+        const customError = new Error('This domain is not authorized for Google Sign-In. Please contact support.');
+        customError.code = error.code;
+        throw customError;
       } else if (error.code === 'auth/operation-not-allowed') {
-        throw new Error('Google Sign-In is not enabled. Please contact support.');
+        const customError = new Error('Google Sign-In is not enabled. Please contact support.');
+        customError.code = error.code;
+        throw customError;
       } else {
-        throw new Error(`Google Sign-In failed: ${error.message}`);
+        // Preserve the original error code for better error handling
+        const customError = new Error(`Google Sign-In failed: ${error.message}`);
+        customError.code = error.code;
+        throw customError;
       }
     }
   }

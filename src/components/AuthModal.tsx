@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
 import authService from '../services/authService';
 
 interface AuthModalProps {
@@ -22,6 +22,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPopupHelp, setShowPopupHelp] = useState(false);
 
   if (!isOpen) return null;
 
@@ -91,14 +92,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError('');
+    setShowPopupHelp(false);
 
     try {
       await authService.signInWithGoogle();
       onSuccess();
     } catch (error: any) {
       // Enhanced error message for popup blocked errors
-      if (error.message && error.message.includes('popup-blocked')) {
-        setError('Pop-up blocked by your browser. Please check your browser\'s address bar for a pop-up blocker icon and allow pop-ups for this site, then try again.');
+      if (error.message && (error.message.includes('popup-blocked') || error.code === 'auth/popup-blocked')) {
+        setShowPopupHelp(true);
+        setError('Pop-up blocked by your browser. Please follow the instructions below to enable pop-ups and try again.');
+      } else if (error.message && error.message.includes('popup-closed-by-user')) {
+        setError('Sign-in was cancelled. Please try again.');
       } else {
         setError(error.message || 'Google sign-in failed. Please try again.');
       }
@@ -116,6 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     });
     setError('');
     setSuccess('');
+    setShowPopupHelp(false);
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -164,6 +170,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
               <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
               <span className="text-sm text-green-800">{success}</span>
+            </div>
+          )}
+
+          {/* Popup Help Instructions */}
+          {showPopupHelp && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <ExternalLink className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-2">How to enable pop-ups:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-xs">
+                    <li>Look for a pop-up blocker icon in your browser's address bar</li>
+                    <li>Click on it and select "Always allow pop-ups from this site"</li>
+                    <li>Refresh the page and try signing in again</li>
+                  </ol>
+                  <p className="mt-2 text-xs">
+                    <strong>Alternative:</strong> You can also sign in using email and password below.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
