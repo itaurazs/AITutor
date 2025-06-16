@@ -1,13 +1,6 @@
 import OpenAI from 'openai';
 import { Subject, Step } from '../types/Subject';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  baseURL: import.meta.env.VITE_OPENAI_BASE_URL || 'https://api.openai.com/v1',
-  dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
-});
-
 export interface AIResponse {
   steps: Step[];
   keyPoints: string[];
@@ -16,12 +9,31 @@ export interface AIResponse {
 
 export class AIService {
   private static instance: AIService;
+  private openaiClient: OpenAI | null = null;
   
   public static getInstance(): AIService {
     if (!AIService.instance) {
       AIService.instance = new AIService();
     }
     return AIService.instance;
+  }
+
+  private getOpenAIClient(): OpenAI {
+    if (!this.openaiClient) {
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your environment variables.');
+      }
+
+      this.openaiClient = new OpenAI({
+        apiKey,
+        baseURL: import.meta.env.VITE_OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
+      });
+    }
+
+    return this.openaiClient;
   }
 
   private getSubjectPrompt(subject: Subject): string {
@@ -107,9 +119,7 @@ export class AIService {
   }
 
   async generateSolution(question: string, subject: Subject): Promise<AIResponse> {
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your environment variables.');
-    }
+    const openai = this.getOpenAIClient(); // This will throw if no API key
 
     const systemPrompt = this.getSubjectPrompt(subject);
     const userPrompt = `
@@ -156,6 +166,8 @@ Make sure to explain WHY each step is necessary, not just HOW to do it. This hel
   // Test connection to AI service
   async testConnection(): Promise<boolean> {
     try {
+      const openai = this.getOpenAIClient();
+      
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: 'Hello, can you respond with just "OK"?' }],
