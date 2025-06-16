@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Check, Crown, Zap, Gift, Star } from 'lucide-react';
-import { TIER_LIMITS, TIER_PRICING, UserTier } from '../services/userTierManager';
+import { TIER_LIMITS, TIER_PRICING, UserTier } from '../Services/userTierManager';
 
 interface UpgradeModalProps {
   isOpen: boolean;

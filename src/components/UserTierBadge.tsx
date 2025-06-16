@@ -1,6 +1,6 @@
 import React from 'react';
 import { Crown, Zap, Gift, AlertCircle } from 'lucide-react';
-import { UserTier } from '../services/userTierManager';
+import { UserTier } from '../Services/userTierManager';
 
 interface UserTierBadgeProps {
   tier: UserTier;

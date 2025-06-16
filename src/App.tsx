@@ -4,7 +4,7 @@ import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
-import { userTierManager, UserTier } from './services/userTierManager';
+import { userTierManager, UserTier } from './Services/userTierManager';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
 import { UserTierBadge } from './components/UserTierBadge';
