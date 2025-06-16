@@ -7,6 +7,8 @@ import { aiService } from './services/aiService';
 import authService, { UserProfile } from './services/authService';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
+import { EducationalResources } from './components/EducationalResources';
+import { GamificationBadges } from './components/GamificationBadges';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { UserProfile as UserProfileModal } from './components/UserProfile';
@@ -818,6 +820,14 @@ function App() {
                   )}
                 </div>
               )}
+
+              {/* Gamification Badges */}
+              {user && (
+                <GamificationBadges userProfile={user} />
+              )}
+
+              {/* Educational Resources */}
+              <EducationalResources subject={selectedSubject.id} />
 
               {/* Sample Questions */}
               <SampleQuestions
