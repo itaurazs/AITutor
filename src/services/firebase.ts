@@ -12,16 +12,43 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Check if we have valid Firebase configuration
+const hasValidConfig = firebaseConfig.apiKey && 
+                      firebaseConfig.authDomain && 
+                      firebaseConfig.projectId &&
+                      firebaseConfig.apiKey !== 'your_firebase_api_key';
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+let app;
+let auth;
+let db;
+let analytics = null;
 
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+if (hasValidConfig) {
+  // Initialize Firebase only if we have valid configuration
+  app = initializeApp(firebaseConfig);
+  
+  // Initialize Firebase Authentication and get a reference to the service
+  auth = getAuth(app);
+  
+  // Initialize Cloud Firestore and get a reference to the service
+  db = getFirestore(app);
+  
+  // Initialize Analytics only in browser environment and with valid config
+  if (typeof window !== 'undefined') {
+    try {
+      analytics = getAnalytics(app);
+    } catch (error) {
+      console.warn('Firebase Analytics initialization failed:', error);
+      analytics = null;
+    }
+  }
+} else {
+  console.warn('Firebase configuration is missing or invalid. Please check your environment variables.');
+  
+  // Create mock objects to prevent runtime errors
+  auth = null;
+  db = null;
+}
 
-// Initialize Analytics (optional)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
-
+export { auth, db, analytics };
 export default app;
