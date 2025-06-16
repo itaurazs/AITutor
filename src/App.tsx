@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle } from 'lucide-react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
-import { userTierManager, UserTier } from './Services/userTierManager';
+import { authService, UserProfile } from './services/authService';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
-import { UserTierBadge } from './components/UserTierBadge';
-import { UpgradeModal } from './components/UpgradeModal';
-import { UsageLimitModal } from './components/UsageLimitModal';
+import { AuthModal } from './components/AuthModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
+import { UserProfile as UserProfileModal } from './components/UserProfile';
 
 function App() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -22,20 +22,26 @@ function App() {
   const [visitorCount, setVisitorCount] = useState(0);
   const [onlineVisitors, setOnlineVisitors] = useState(1);
   
-  // User tier management
-  const [userTier, setUserTier] = useState<UserTier>('free');
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showLimitModal, setShowLimitModal] = useState(false);
-  const [limitType, setLimitType] = useState<'daily' | 'monthly' | 'total'>('daily');
-  const [usageStats, setUsageStats] = useState(userTierManager.getUsageStats());
+  // Authentication and user management
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [useAI, setUseAI] = useState(false);
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
-  // Initialize user data and check AI connection
+  // Initialize auth state
   useEffect(() => {
-    const userData = userTierManager.getCurrentUser();
-    setUserTier(userData.tier);
-    setUsageStats(userTierManager.getUsageStats());
+    const initAuth = async () => {
+      const currentUser = authService.getCurrentUser();
+      const userProfile = authService.getUserProfile();
+      
+      if (currentUser && userProfile) {
+        setUser(userProfile);
+      }
+    };
+
+    initAuth();
 
     // Check AI connection
     const checkAIConnection = async () => {
@@ -135,23 +141,45 @@ function App() {
     setCurrentQuestion('');
   };
 
+  const canMakeAIRequest = (): { allowed: boolean; reason?: string } => {
+    if (!user) {
+      return { allowed: false, reason: 'Please sign in to use AI features' };
+    }
+
+    // Check daily limits based on tier
+    const today = new Date().toISOString().split('T')[0];
+    const dailyCount = user.usage.daily.date === today ? user.usage.daily.count : 0;
+
+    let dailyLimit: number;
+    switch (user.tier) {
+      case 'premium':
+        dailyLimit = 50;
+        break;
+      case 'unlimited':
+        dailyLimit = Infinity;
+        break;
+      default:
+        dailyLimit = 5;
+    }
+
+    if (dailyCount >= dailyLimit) {
+      return { allowed: false, reason: `Daily limit of ${dailyLimit} AI questions reached` };
+    }
+
+    return { allowed: true };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentQuestion.trim() || !selectedSubject) return;
 
-    // Check usage limits
-    const canUse = userTierManager.canMakeAIRequest();
-    if (!canUse.allowed) {
-      // Determine limit type based on the reason
-      if (canUse.reason?.includes('Daily limit')) {
-        setLimitType('daily');
-      } else if (canUse.reason?.includes('Monthly limit')) {
-        setLimitType('monthly');
-      } else {
-        setLimitType('total');
+    // Check if user can make AI request
+    if (useAI && aiConnectionStatus === 'connected') {
+      const canUse = canMakeAIRequest();
+      if (!canUse.allowed) {
+        alert(canUse.reason);
+        return;
       }
-      setShowLimitModal(true);
-      return;
     }
 
     setIsLoading(true);
@@ -159,12 +187,16 @@ function App() {
     try {
       let solution;
       
-      if (useAI && aiConnectionStatus === 'connected') {
+      if (useAI && aiConnectionStatus === 'connected' && user) {
         // Use AI service
         solution = await aiService.generateSolution(currentQuestion, selectedSubject);
         // Record AI usage
-        userTierManager.recordAIUsage();
-        setUsageStats(userTierManager.getUsageStats());
+        await authService.recordAIUsage(selectedSubject.id);
+        // Update local user state
+        const updatedProfile = authService.getUserProfile();
+        if (updatedProfile) {
+          setUser(updatedProfile);
+        }
       } else {
         // Fallback to local generation
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -216,23 +248,46 @@ function App() {
     }
   };
 
-  const handleUpgrade = (tier: UserTier) => {
-    if (tier === 'free') {
-      userTierManager.downgradeToFree();
-    } else {
-      // In a real app, this would integrate with a payment processor
-      userTierManager.simulateSubscription(tier, 30);
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    const userProfile = authService.getUserProfile();
+    if (userProfile) {
+      setUser(userProfile);
     }
-    
-    const userData = userTierManager.getCurrentUser();
-    setUserTier(userData.tier);
-    setUsageStats(userTierManager.getUsageStats());
-    setShowUpgradeModal(false);
   };
 
-  const getRemainingQuestions = () => {
-    const canUse = userTierManager.canMakeAIRequest();
-    return canUse.remainingDaily || 0;
+  const handleSubscriptionSuccess = () => {
+    setShowSubscriptionModal(false);
+    const userProfile = authService.getUserProfile();
+    if (userProfile) {
+      setUser(userProfile);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await authService.signOut();
+    setUser(null);
+    setShowUserProfile(false);
+  };
+
+  const getRemainingQuestions = (): number => {
+    if (!user) return 0;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const dailyCount = user.usage.daily.date === today ? user.usage.daily.count : 0;
+    
+    let dailyLimit: number;
+    switch (user.tier) {
+      case 'premium':
+        dailyLimit = 50;
+        break;
+      case 'unlimited':
+        return Infinity;
+      default:
+        dailyLimit = 5;
+    }
+    
+    return Math.max(0, dailyLimit - dailyCount);
   };
 
   return (
@@ -260,7 +315,7 @@ function App() {
                     type="checkbox"
                     checked={useAI}
                     onChange={(e) => setUseAI(e.target.checked)}
-                    disabled={aiConnectionStatus !== 'connected'}
+                    disabled={aiConnectionStatus !== 'connected' || !user}
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">Use AI</span>
@@ -271,12 +326,31 @@ function App() {
                 }`}></div>
               </div>
 
-              {/* User Tier Badge */}
-              <UserTierBadge
-                tier={userTier}
-                remainingQuestions={getRemainingQuestions()}
-                onClick={() => setShowUpgradeModal(true)}
-              />
+              {/* User Authentication */}
+              {user ? (
+                <button
+                  onClick={() => setShowUserProfile(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">{user.displayName}</span>
+                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
+                    user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.tier}
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span>Sign In</span>
+                </button>
+              )}
               
               {/* Online Visitors Counter */}
               <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
@@ -334,6 +408,24 @@ function App() {
                           : 'AI service unavailable - using local solutions'
                         }
                       </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Authentication Prompt */}
+                {!user && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-blue-800">
+                        Sign in to unlock AI-powered explanations and track your progress
+                      </span>
+                      <button
+                        onClick={() => setShowAuthModal(true)}
+                        className="ml-2 text-blue-600 hover:text-blue-700 font-semibold text-sm underline"
+                      >
+                        Sign In
+                      </button>
                     </div>
                   </div>
                 )}
@@ -414,7 +506,7 @@ function App() {
                     <div className={`h-5 w-5 ${selectedSubject.color}`}></div>
                   </div>
                   Ask Your {selectedSubject.name} Question
-                  {useAI && aiConnectionStatus === 'connected' && (
+                  {useAI && aiConnectionStatus === 'connected' && user && (
                     <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                       AI Powered
                     </span>
@@ -437,7 +529,7 @@ function App() {
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                         <span>
-                          {useAI && aiConnectionStatus === 'connected' 
+                          {useAI && aiConnectionStatus === 'connected' && user
                             ? 'AI is thinking...' 
                             : 'Working through the steps...'
                           }
@@ -550,51 +642,40 @@ function App() {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* Usage Stats */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Usage</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Daily Questions</span>
-                    <span className="font-semibold">
-                      {usageStats.current.daily.count} / {
-                        usageStats.limits.dailyQuestions === Infinity 
-                          ? '∞' 
-                          : usageStats.limits.dailyQuestions
-                      }
-                    </span>
+              {/* User Stats */}
+              {user && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Usage</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Today's Questions</span>
+                      <span className="font-semibold">
+                        {user.usage.daily.date === new Date().toISOString().split('T')[0] 
+                          ? user.usage.daily.count 
+                          : 0
+                        } / {user.tier === 'unlimited' ? '∞' : user.tier === 'premium' ? '50' : '5'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total Questions</span>
+                      <span className="font-semibold">{user.progress.totalQuestions}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Streak Days</span>
+                      <span className="font-semibold">{user.progress.streakDays} 🔥</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Monthly Questions</span>
-                    <span className="font-semibold">
-                      {usageStats.current.monthly.count} / {
-                        usageStats.limits.monthlyQuestions === Infinity 
-                          ? '∞' 
-                          : usageStats.limits.monthlyQuestions
-                      }
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Questions</span>
-                    <span className="font-semibold">
-                      {usageStats.current.total} / {
-                        usageStats.limits.totalQuestions === Infinity 
-                          ? '∞' 
-                          : usageStats.limits.totalQuestions.toLocaleString()
-                      }
-                    </span>
-                  </div>
+                  
+                  {user.tier === 'free' && (
+                    <button
+                      onClick={() => setShowSubscriptionModal(true)}
+                      className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm font-semibold"
+                    >
+                      Upgrade for More Questions
+                    </button>
+                  )}
                 </div>
-                
-                {userTier === 'free' && (
-                  <button
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm font-semibold"
-                  >
-                    Upgrade for More Questions
-                  </button>
-                )}
-              </div>
+              )}
 
               {/* Sample Questions */}
               <SampleQuestions
@@ -607,7 +688,7 @@ function App() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Questions</h3>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {questionHistory.slice(0, userTier === 'free' ? 10 : questionHistory.length).map((item) => (
+                    {questionHistory.slice(0, user?.tier === 'free' ? 10 : questionHistory.length).map((item) => (
                       <div
                         key={item.id}
                         className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
@@ -656,23 +737,26 @@ function App() {
       </div>
 
       {/* Modals */}
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        currentTier={userTier}
-        onUpgrade={handleUpgrade}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
       />
 
-      <UsageLimitModal
-        isOpen={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-        limitType={limitType}
-        currentTier={userTier}
-        onUpgrade={() => {
-          setShowLimitModal(false);
-          setShowUpgradeModal(true);
-        }}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        onSuccess={handleSubscriptionSuccess}
       />
+
+      {user && (
+        <UserProfileModal
+          isOpen={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+          userProfile={user}
+          onSignOut={handleSignOut}
+        />
+      )}
     </div>
   );
 }
