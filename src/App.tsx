@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame } from 'lucide-react';
 import { subjects } from './data/subjects';
+import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
+import { MathStrand } from './data/mathStrands';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
 import authService, { UserProfile } from './services/authService';
 import { SubjectCard } from './components/SubjectCard';
+import { MathStrandCard } from './components/MathStrandCard';
+import { MathStrandDetail } from './components/MathStrandDetail';
 import { SampleQuestions } from './components/SampleQuestions';
 import { EducationalResources } from './components/EducationalResources';
 import { GamificationBadges } from './components/GamificationBadges';
@@ -20,10 +24,13 @@ import { FAQPage } from './components/FAQPage';
 import { TestimonialsPage } from './components/TestimonialsPage';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
+type CurrentView = 'subjects' | 'math-strands' | 'strand-detail' | 'question-interface';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
+  const [currentView, setCurrentView] = useState<CurrentView>('subjects');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [selectedStrand, setSelectedStrand] = useState<MathStrand | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentSteps, setCurrentSteps] = useState<Step[]>([]);
@@ -151,7 +158,9 @@ function App() {
 
   const handleNavigate = (page: CurrentPage) => {
     setCurrentPage(page);
+    setCurrentView('subjects');
     setSelectedSubject(null);
+    setSelectedStrand(null);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
@@ -168,24 +177,42 @@ function App() {
     }
 
     setSelectedSubject(subject);
+    
+    // If it's Year 7 Mathematics, show the strands view
+    if (subject.id === 'year7-mathematics') {
+      setCurrentView('math-strands');
+    } else {
+      setCurrentView('question-interface');
+    }
+    
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
     
     // Scroll to top immediately when subject is selected
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // Alternative: Scroll to question input area specifically
-    setTimeout(() => {
-      const questionInputElement = document.getElementById('question-input-section');
-      if (questionInputElement) {
-        questionInputElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        });
-      }
-    }, 100);
+  };
+
+  const handleStrandSelect = (strand: MathStrand) => {
+    setSelectedStrand(strand);
+    setCurrentView('strand-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToStrands = () => {
+    setSelectedStrand(null);
+    setCurrentView('math-strands');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToSubjects = () => {
+    setSelectedSubject(null);
+    setSelectedStrand(null);
+    setCurrentView('subjects');
+    setCurrentSteps([]);
+    setCurrentKeyPoints([]);
+    setCurrentQuestion('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const canMakeAIRequest = (): { allowed: boolean; reason?: string } => {
@@ -218,7 +245,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentQuestion.trim() || !selectedSubject) return;
+    if (!currentQuestion.trim()) return;
 
     // Check if user can make AI request
     if (useAI && aiConnectionStatus === 'connected') {
@@ -230,15 +257,31 @@ function App() {
     }
 
     setIsLoading(true);
+    setCurrentView('question-interface');
     
     try {
       let solution;
+      let subjectForSolution = selectedSubject;
       
-      if (useAI && aiConnectionStatus === 'connected' && user) {
+      // If we're in a strand, create a temporary subject for the solution
+      if (selectedStrand) {
+        subjectForSolution = {
+          id: selectedStrand.id,
+          name: selectedStrand.name,
+          icon: selectedStrand.icon,
+          color: selectedStrand.color,
+          bgColor: selectedStrand.bgColor,
+          description: selectedStrand.description,
+          available: true,
+          sampleQuestions: selectedStrand.sampleQuestions
+        };
+      }
+      
+      if (useAI && aiConnectionStatus === 'connected' && user && subjectForSolution) {
         // Use AI service
-        solution = await aiService.generateSolution(currentQuestion, selectedSubject);
+        solution = await aiService.generateSolution(currentQuestion, subjectForSolution);
         // Record AI usage
-        await authService.recordAIUsage(selectedSubject.id);
+        await authService.recordAIUsage(subjectForSolution.id);
         // Update local user state
         const updatedProfile = authService.getUserProfile();
         if (updatedProfile) {
@@ -247,7 +290,7 @@ function App() {
       } else {
         // Fallback to local generation
         await new Promise(resolve => setTimeout(resolve, 2000));
-        const localSolution = generateStepByStepSolution(currentQuestion, selectedSubject.id);
+        const localSolution = generateStepByStepSolution(currentQuestion, subjectForSolution?.id || 'mathematics');
         solution = {
           steps: localSolution.steps,
           keyPoints: localSolution.keyPoints,
@@ -261,7 +304,7 @@ function App() {
       const newQuestion: Question = {
         id: Date.now().toString(),
         question: currentQuestion,
-        subject: selectedSubject.name,
+        subject: subjectForSolution?.name || 'Mathematics',
         steps: solution.steps,
         keyPoints: solution.keyPoints,
         timestamp: new Date(),
@@ -271,7 +314,7 @@ function App() {
     } catch (error) {
       console.error('Error generating solution:', error);
       // Fallback to local generation on error
-      const localSolution = generateStepByStepSolution(currentQuestion, selectedSubject.id);
+      const localSolution = generateStepByStepSolution(currentQuestion, selectedStrand?.id || selectedSubject?.id || 'mathematics');
       setCurrentSteps(localSolution.steps);
       setCurrentKeyPoints(localSolution.keyPoints);
     } finally {
@@ -283,6 +326,7 @@ function App() {
     setCurrentQuestion(question);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
+    setCurrentView('question-interface');
     
     // Scroll to question input when sample question is selected
     setTimeout(() => {
@@ -304,6 +348,7 @@ function App() {
     const subject = subjects.find(s => s.name === item.subject);
     if (subject) {
       setSelectedSubject(subject);
+      setCurrentView('question-interface');
     }
     
     // Scroll to top when loading from history
@@ -396,6 +441,30 @@ function App() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Navigation Breadcrumbs */}
+              {currentView !== 'subjects' && (
+                <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+                  <button
+                    onClick={handleBackToSubjects}
+                    className="hover:text-blue-600 transition-colors"
+                  >
+                    Subjects
+                  </button>
+                  {selectedSubject && (
+                    <>
+                      <span>/</span>
+                      <span className="text-blue-600">{selectedSubject.name}</span>
+                    </>
+                  )}
+                  {selectedStrand && (
+                    <>
+                      <span>/</span>
+                      <span className="text-purple-600">{selectedStrand.name}</span>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* AI Toggle */}
               <div className="flex items-center space-x-2">
                 <label className="flex items-center space-x-2 cursor-pointer">
@@ -475,7 +544,7 @@ function App() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Subject Selection */}
-        {!selectedSubject && (
+        {currentView === 'subjects' && (
           <div className="space-y-8">
             {/* Welcome Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-8">
@@ -568,34 +637,89 @@ function App() {
           </div>
         )}
 
-        {/* Subject-Specific Interface */}
-        {selectedSubject && selectedSubject.available && (
+        {/* Math Strands View */}
+        {currentView === 'math-strands' && selectedSubject && (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-8">
+              <button
+                onClick={handleBackToSubjects}
+                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors mb-6"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180" />
+                <span>Back to Subjects</span>
+              </button>
+              
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                  Year 7 Mathematics Strands
+                </h1>
+                <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
+                  Explore the 6 key areas of the Australian Curriculum v9.0 for Year 7 Mathematics. 
+                  Each strand builds essential mathematical understanding and skills.
+                </p>
+                <div className="bg-green-100 text-green-800 text-sm px-4 py-2 rounded-full inline-block font-semibold">
+                  ✅ Australian Curriculum v9.0 Aligned
+                </div>
+              </div>
+            </div>
+
+            {/* Strands Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {year7MathStrands.map((strand) => (
+                <MathStrandCard
+                  key={strand.id}
+                  strand={strand}
+                  onSelect={() => handleStrandSelect(strand)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Strand Detail View */}
+        {currentView === 'strand-detail' && selectedStrand && (
+          <MathStrandDetail
+            strand={selectedStrand}
+            onBack={handleBackToStrands}
+            onQuestionSelect={handleSampleQuestion}
+          />
+        )}
+
+        {/* Question Interface */}
+        {currentView === 'question-interface' && (selectedSubject || selectedStrand) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Subject Header */}
-              <div className={`${selectedSubject.bgColor} rounded-2xl shadow-sm border border-current p-6`}>
+              {/* Subject/Strand Header */}
+              <div className={`${(selectedStrand || selectedSubject)?.bgColor} rounded-2xl shadow-sm border border-current p-6`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="bg-white p-3 rounded-xl">
-                      <div className={`h-8 w-8 ${selectedSubject.color}`}>
-                        {/* Icon will be rendered by SubjectCard component logic */}
+                      <div className={`h-8 w-8 ${(selectedStrand || selectedSubject)?.color}`}>
+                        {/* Icon will be rendered by component logic */}
                       </div>
                     </div>
                     <div>
-                      <h2 className={`text-2xl font-bold ${selectedSubject.color}`}>
-                        {selectedSubject.name}
+                      <h2 className={`text-2xl font-bold ${(selectedStrand || selectedSubject)?.color}`}>
+                        {selectedStrand?.name || selectedSubject?.name}
                       </h2>
-                      <p className={`${selectedSubject.color.replace('600', '700')}`}>
-                        {selectedSubject.description}
+                      <p className={`${(selectedStrand || selectedSubject)?.color.replace('600', '700')}`}>
+                        {selectedStrand?.description || selectedSubject?.description}
                       </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedSubject(null)}
-                    className={`px-4 py-2 bg-white ${selectedSubject.color} rounded-lg hover:bg-gray-50 transition-colors`}
+                    onClick={() => {
+                      if (selectedStrand) {
+                        handleBackToStrands();
+                      } else {
+                        handleBackToSubjects();
+                      }
+                    }}
+                    className={`px-4 py-2 bg-white ${(selectedStrand || selectedSubject)?.color} rounded-lg hover:bg-gray-50 transition-colors`}
                   >
-                    Change Subject
+                    {selectedStrand ? 'Back to Strands' : 'Change Subject'}
                   </button>
                 </div>
               </div>
@@ -603,10 +727,10 @@ function App() {
               {/* Question Input */}
               <div id="question-input-section" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <div className={`p-2 rounded-lg ${selectedSubject.bgColor} mr-3`}>
-                    <div className={`h-5 w-5 ${selectedSubject.color}`}></div>
+                  <div className={`p-2 rounded-lg ${(selectedStrand || selectedSubject)?.bgColor} mr-3`}>
+                    <div className={`h-5 w-5 ${(selectedStrand || selectedSubject)?.color}`}></div>
                   </div>
-                  Ask Your {selectedSubject.name} Question
+                  Ask Your {selectedStrand?.name || selectedSubject?.name} Question
                   {useAI && aiConnectionStatus === 'connected' && user && (
                     <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                       AI Powered
@@ -617,7 +741,7 @@ function App() {
                   <textarea
                     value={currentQuestion}
                     onChange={(e) => setCurrentQuestion(e.target.value)}
-                    placeholder={`Type your ${selectedSubject.name.toLowerCase()} question here...`}
+                    placeholder={`Type your ${(selectedStrand?.name || selectedSubject?.name)?.toLowerCase()} question here...`}
                     className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     rows={3}
                   />
@@ -835,11 +959,20 @@ function App() {
               )}
 
               {/* Educational Resources */}
-              <EducationalResources subject={selectedSubject.id} />
+              <EducationalResources subject={selectedStrand?.id || selectedSubject?.id} />
 
               {/* Sample Questions */}
               <SampleQuestions
-                subject={selectedSubject}
+                subject={selectedStrand ? {
+                  id: selectedStrand.id,
+                  name: selectedStrand.name,
+                  icon: selectedStrand.icon,
+                  color: selectedStrand.color,
+                  bgColor: selectedStrand.bgColor,
+                  description: selectedStrand.description,
+                  available: true,
+                  sampleQuestions: selectedStrand.sampleQuestions
+                } : selectedSubject!}
                 onQuestionSelect={handleSampleQuestion}
               />
 
