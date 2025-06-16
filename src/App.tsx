@@ -316,48 +316,6 @@ function App() {
               </div>
             </div>
 
-            {/* Center Section - Streak Display */}
-            {user && (
-              <div className="hidden md:flex items-center space-x-6">
-                {/* Learning Streak */}
-                <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-orange-50 to-red-50 text-orange-700 rounded-xl border border-orange-200">
-                  <div className="flex items-center space-x-2">
-                    <Flame className="h-5 w-5 text-orange-600" />
-                    <div className="text-center">
-                      <div className="text-lg font-bold flex items-center">
-                        {getStreakEmoji(user.progress.streakDays)}
-                        <span className="ml-1">{user.progress.streakDays}</span>
-                      </div>
-                      <div className="text-xs text-orange-600">Day Streak</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today's Progress */}
-                <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-xl border border-blue-200">
-                  <Target className="h-5 w-5 text-blue-600" />
-                  <div className="text-center">
-                    <div className="text-lg font-bold">
-                      {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                        ? user.usage.daily.count 
-                        : 0
-                      }
-                    </div>
-                    <div className="text-xs text-blue-600">Today's Questions</div>
-                  </div>
-                </div>
-
-                {/* Total Questions */}
-                <div className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl border border-green-200">
-                  <Brain className="h-5 w-5 text-green-600" />
-                  <div className="text-center">
-                    <div className="text-lg font-bold">{user.progress.totalQuestions}</div>
-                    <div className="text-xs text-green-600">Total Questions</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="flex items-center space-x-4">
               {/* AI Toggle */}
               <div className="flex items-center space-x-2">
@@ -429,46 +387,6 @@ function App() {
               </button>
             </div>
           </div>
-
-          {/* Mobile Streak Display */}
-          {user && (
-            <div className="md:hidden mt-4 flex items-center justify-center space-x-4">
-              {/* Learning Streak */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-orange-50 to-red-50 text-orange-700 rounded-lg border border-orange-200">
-                <Flame className="h-4 w-4 text-orange-600" />
-                <div className="text-center">
-                  <div className="text-sm font-bold flex items-center">
-                    {getStreakEmoji(user.progress.streakDays)}
-                    <span className="ml-1">{user.progress.streakDays}</span>
-                  </div>
-                  <div className="text-xs text-orange-600">Streak</div>
-                </div>
-              </div>
-
-              {/* Today's Progress */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg border border-blue-200">
-                <Target className="h-4 w-4 text-blue-600" />
-                <div className="text-center">
-                  <div className="text-sm font-bold">
-                    {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                      ? user.usage.daily.count 
-                      : 0
-                    }
-                  </div>
-                  <div className="text-xs text-blue-600">Today</div>
-                </div>
-              </div>
-
-              {/* Total Questions */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-lg border border-green-200">
-                <Brain className="h-4 w-4 text-green-600" />
-                <div className="text-center">
-                  <div className="text-sm font-bold">{user.progress.totalQuestions}</div>
-                  <div className="text-xs text-green-600">Total</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
@@ -517,6 +435,52 @@ function App() {
                       >
                         Sign In
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* User Progress Display - Only show when signed in */}
+                {user && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                    {/* Learning Streak */}
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Flame className="h-5 w-5 text-orange-600" />
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-orange-900 flex items-center justify-center">
+                            {getStreakEmoji(user.progress.streakDays)}
+                            <span className="ml-1">{user.progress.streakDays}</span>
+                          </div>
+                          <div className="text-sm text-orange-700">Day Streak</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Today's Progress */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Target className="h-5 w-5 text-blue-600" />
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-blue-900">
+                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
+                              ? user.usage.daily.count 
+                              : 0
+                            }
+                          </div>
+                          <div className="text-sm text-blue-700">Today's Questions</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Questions */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Brain className="h-5 w-5 text-green-600" />
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-green-900">{user.progress.totalQuestions}</div>
+                          <div className="text-sm text-green-700">Total Questions</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -736,26 +700,74 @@ function App() {
               {/* User Stats */}
               {user && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Usage</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Progress</h3>
+                  
+                  {/* Progress Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {/* Learning Streak */}
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <Flame className="h-4 w-4 text-orange-600" />
+                        <div>
+                          <div className="text-lg font-bold text-orange-900 flex items-center">
+                            {getStreakEmoji(user.progress.streakDays)}
+                            <span className="ml-1">{user.progress.streakDays}</span>
+                          </div>
+                          <div className="text-xs text-orange-700">Day Streak</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Today's Questions */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <Target className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <div className="text-lg font-bold text-blue-900">
+                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
+                              ? user.usage.daily.count 
+                              : 0
+                            }
+                          </div>
+                          <div className="text-xs text-blue-700">Today</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Questions */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <Brain className="h-4 w-4 text-green-600" />
+                        <div>
+                          <div className="text-lg font-bold text-green-900">{user.progress.totalQuestions}</div>
+                          <div className="text-xs text-green-700">Total</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Subjects Used */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="h-4 w-4 bg-purple-600 rounded-full"></div>
+                        <div>
+                          <div className="text-lg font-bold text-purple-900">
+                            {Object.keys(user.progress.subjectStats).length}
+                          </div>
+                          <div className="text-xs text-purple-700">Subjects</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Usage Details */}
+                  <div className="space-y-3 border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Today's Questions</span>
+                      <span className="text-sm text-gray-600">Daily Limit</span>
                       <span className="font-semibold">
                         {user.usage.daily.date === new Date().toISOString().split('T')[0] 
                           ? user.usage.daily.count 
                           : 0
                         } / {user.tier === 'unlimited' ? '∞' : user.tier === 'premium' ? '50' : '5'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Questions</span>
-                      <span className="font-semibold">{user.progress.totalQuestions}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Streak Days</span>
-                      <span className="font-semibold flex items-center">
-                        {getStreakEmoji(user.progress.streakDays)}
-                        <span className="ml-1">{user.progress.streakDays}</span>
                       </span>
                     </div>
                   </div>
