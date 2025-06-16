@@ -7,7 +7,8 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  connectAuthEmulator
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -51,20 +52,42 @@ class AuthService {
   private static instance: AuthService;
   private currentUser: User | null = null;
   private userProfile: UserProfile | null = null;
+  private authInitialized = false;
 
   private constructor() {
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
     // Only initialize auth listener if Firebase is properly configured
     if (auth) {
-      onAuthStateChanged(auth, async (user) => {
-        this.currentUser = user;
-        if (user) {
-          await this.loadUserProfile(user.uid);
-        } else {
-          this.userProfile = null;
-        }
-      });
+      try {
+        // Set up auth state listener with timeout
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          this.currentUser = user;
+          if (user) {
+            await this.loadUserProfile(user.uid);
+          } else {
+            this.userProfile = null;
+          }
+          this.authInitialized = true;
+        });
+
+        // Set a timeout for auth initialization
+        setTimeout(() => {
+          if (!this.authInitialized) {
+            console.warn('Firebase Auth initialization timed out');
+            this.authInitialized = true;
+          }
+        }, 5000);
+
+      } catch (error) {
+        console.warn('Firebase Auth initialization failed:', error);
+        this.authInitialized = true;
+      }
     } else {
       console.warn('Firebase Auth is not initialized. Please check your Firebase configuration.');
+      this.authInitialized = true;
     }
   }
 
@@ -75,6 +98,16 @@ class AuthService {
     return AuthService.instance;
   }
 
+  // Helper function to create timeout promise
+  private createTimeoutPromise<T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => 
+        setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+      )
+    ]);
+  }
+
   // Sign up with email and password
   async signUp(email: string, password: string, displayName: string): Promise<UserProfile> {
     if (!auth) {
@@ -82,11 +115,17 @@ class AuthService {
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await this.createTimeoutPromise(
+        createUserWithEmailAndPassword(auth, email, password),
+        15000
+      );
       const user = userCredential.user;
 
       // Update display name
-      await updateProfile(user, { displayName });
+      await this.createTimeoutPromise(
+        updateProfile(user, { displayName }),
+        10000
+      );
 
       // Create user profile
       const userProfile: UserProfile = {
@@ -116,14 +155,17 @@ class AuthService {
         }
       };
 
-      // Try to save to Firestore, but don't fail if it's not available
+      // Try to save to Firestore with timeout
       if (db) {
         try {
-          await setDoc(doc(db, 'users', user.uid), {
-            ...userProfile,
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp()
-          });
+          await this.createTimeoutPromise(
+            setDoc(doc(db, 'users', user.uid), {
+              ...userProfile,
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp()
+            }),
+            10000
+          );
         } catch (error) {
           console.warn('Failed to save user profile to Firestore:', error);
           // Continue with local profile
@@ -132,8 +174,11 @@ class AuthService {
 
       this.userProfile = userProfile;
       return userProfile;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign up error:', error);
+      if (error.message === 'Operation timed out') {
+        throw new Error('Sign up is taking too long. Please check your internet connection and try again.');
+      }
       throw error;
     }
   }
@@ -145,15 +190,21 @@ class AuthService {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await this.createTimeoutPromise(
+        signInWithEmailAndPassword(auth, email, password),
+        15000
+      );
       const user = userCredential.user;
 
       // Update last login if db is available
       if (db) {
         try {
-          await updateDoc(doc(db, 'users', user.uid), {
-            lastLogin: serverTimestamp()
-          });
+          await this.createTimeoutPromise(
+            updateDoc(doc(db, 'users', user.uid), {
+              lastLogin: serverTimestamp()
+            }),
+            5000
+          );
         } catch (error) {
           console.warn('Failed to update last login:', error);
         }
@@ -161,8 +212,11 @@ class AuthService {
 
       await this.loadUserProfile(user.uid);
       return this.userProfile!;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
+      if (error.message === 'Operation timed out') {
+        throw new Error('Sign in is taking too long. Please check your internet connection and try again.');
+      }
       throw error;
     }
   }
@@ -185,7 +239,10 @@ class AuthService {
         prompt: 'select_account'
       });
 
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await this.createTimeoutPromise(
+        signInWithPopup(auth, provider),
+        20000 // Longer timeout for Google sign-in
+      );
       const user = userCredential.user;
 
       // Create a basic user profile first
@@ -213,18 +270,24 @@ class AuthService {
       // Set the profile immediately for offline scenarios
       this.userProfile = userProfile;
 
-      // Try to sync with Firestore if available
+      // Try to sync with Firestore if available (with shorter timeout)
       if (db) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userDoc = await this.createTimeoutPromise(
+            getDoc(doc(db, 'users', user.uid)),
+            8000
+          );
           
           if (!userDoc.exists()) {
             // Create new user profile in Firestore
-            await setDoc(doc(db, 'users', user.uid), {
-              ...userProfile,
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp()
-            });
+            await this.createTimeoutPromise(
+              setDoc(doc(db, 'users', user.uid), {
+                ...userProfile,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp()
+              }),
+              8000
+            );
           } else {
             // Load existing profile from Firestore
             const data = userDoc.data();
@@ -236,9 +299,12 @@ class AuthService {
             } as UserProfile;
 
             // Update last login
-            await updateDoc(doc(db, 'users', user.uid), {
-              lastLogin: serverTimestamp()
-            });
+            await this.createTimeoutPromise(
+              updateDoc(doc(db, 'users', user.uid), {
+                lastLogin: serverTimestamp()
+              }),
+              5000
+            );
           }
         } catch (error) {
           console.warn('Firestore operation failed, continuing with local profile:', error);
@@ -251,7 +317,9 @@ class AuthService {
       console.error('Google sign in error:', error);
       
       // Provide more specific error messages
-      if (error.code === 'auth/popup-closed-by-user') {
+      if (error.message === 'Operation timed out') {
+        throw new Error('Google Sign-In is taking too long. Please check your internet connection and try again.');
+      } else if (error.code === 'auth/popup-closed-by-user') {
         throw new Error('Sign-in was cancelled. Please try again.');
       } else if (error.code === 'auth/popup-blocked') {
         throw new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
@@ -276,11 +344,17 @@ class AuthService {
     }
 
     try {
-      await signOut(auth);
+      await this.createTimeoutPromise(signOut(auth), 10000);
       this.currentUser = null;
       this.userProfile = null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign out error:', error);
+      if (error.message === 'Operation timed out') {
+        // Force local sign out even if remote fails
+        this.currentUser = null;
+        this.userProfile = null;
+        return;
+      }
       throw error;
     }
   }
@@ -292,9 +366,15 @@ class AuthService {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error) {
+      await this.createTimeoutPromise(
+        sendPasswordResetEmail(auth, email),
+        10000
+      );
+    } catch (error: any) {
       console.error('Password reset error:', error);
+      if (error.message === 'Operation timed out') {
+        throw new Error('Password reset is taking too long. Please check your internet connection and try again.');
+      }
       throw error;
     }
   }
@@ -330,7 +410,11 @@ class AuthService {
     }
 
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
+      const userDoc = await this.createTimeoutPromise(
+        getDoc(doc(db, 'users', uid)),
+        8000
+      );
+      
       if (userDoc.exists()) {
         const data = userDoc.data();
         this.userProfile = {
@@ -398,7 +482,10 @@ class AuthService {
 
     if (db) {
       try {
-        await updateDoc(doc(db, 'users', this.currentUser.uid), updates);
+        await this.createTimeoutPromise(
+          updateDoc(doc(db, 'users', this.currentUser.uid), updates),
+          8000
+        );
       } catch (error) {
         console.warn('Error updating user profile in Firestore:', error);
         // Continue with local update
@@ -490,6 +577,11 @@ class AuthService {
   // Check if Firebase is configured
   isFirebaseConfigured(): boolean {
     return auth !== null;
+  }
+
+  // Check if auth is initialized
+  isAuthInitialized(): boolean {
+    return this.authInitialized;
   }
 }
 
