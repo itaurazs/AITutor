@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, ExternalLink, Wifi } from 'lucide-react';
 import authService from '../services/authService';
 
 interface AuthModalProps {
@@ -98,14 +98,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       await authService.signInWithGoogle();
       onSuccess();
     } catch (error: any) {
-      // Enhanced error message for popup blocked errors
-      if (error.message && (error.message.includes('popup-blocked') || error.code === 'auth/popup-blocked')) {
+      console.error('Google sign-in error:', error);
+      
+      // Enhanced error handling
+      if (error.message && (error.message.includes('popup-blocked') || error.message.includes('Pop-up was blocked'))) {
         setShowPopupHelp(true);
         setError('Pop-up blocked by your browser. Please follow the instructions below to enable pop-ups and try again.');
-      } else if (error.message && error.message.includes('popup-closed-by-user')) {
+      } else if (error.message && error.message.includes('cancelled')) {
         setError('Sign-in was cancelled. Please try again.');
+      } else if (error.message && error.message.includes('offline')) {
+        setError('You appear to be offline. Please check your internet connection and try again.');
+      } else if (error.message && error.message.includes('network')) {
+        setError('Network error. Please check your internet connection and try again.');
       } else {
-        setError(error.message || 'Google sign-in failed. Please try again.');
+        setError(error.message || 'Google sign-in failed. Please try again or use email/password sign-in.');
       }
     } finally {
       setIsLoading(false);
@@ -204,6 +210,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </div>
             </div>
           )}
+
+          {/* Connection Status */}
+          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Wifi className="h-4 w-4 text-gray-600" />
+              <span className="text-sm text-gray-700">
+                {navigator.onLine ? 'Connected to internet' : 'Offline - limited functionality'}
+              </span>
+            </div>
+          </div>
 
           {/* Google Sign In */}
           {mode !== 'reset' && authService.isFirebaseConfigured() && (

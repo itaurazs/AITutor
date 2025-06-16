@@ -77,7 +77,7 @@ class AuthService {
 
   // Sign up with email and password
   async signUp(email: string, password: string, displayName: string): Promise<UserProfile> {
-    if (!auth || !db) {
+    if (!auth) {
       throw new Error('Firebase is not initialized. Please check your Firebase configuration.');
     }
 
@@ -88,7 +88,7 @@ class AuthService {
       // Update display name
       await updateProfile(user, { displayName });
 
-      // Create user profile in Firestore
+      // Create user profile
       const userProfile: UserProfile = {
         uid: user.uid,
         email: user.email!,
@@ -116,11 +116,19 @@ class AuthService {
         }
       };
 
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userProfile,
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp()
-      });
+      // Try to save to Firestore, but don't fail if it's not available
+      if (db) {
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            ...userProfile,
+            createdAt: serverTimestamp(),
+            lastLogin: serverTimestamp()
+          });
+        } catch (error) {
+          console.warn('Failed to save user profile to Firestore:', error);
+          // Continue with local profile
+        }
+      }
 
       this.userProfile = userProfile;
       return userProfile;
@@ -142,9 +150,13 @@ class AuthService {
 
       // Update last login if db is available
       if (db) {
-        await updateDoc(doc(db, 'users', user.uid), {
-          lastLogin: serverTimestamp()
-        });
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            lastLogin: serverTimestamp()
+          });
+        } catch (error) {
+          console.warn('Failed to update last login:', error);
+        }
       }
 
       await this.loadUserProfile(user.uid);
@@ -176,103 +188,83 @@ class AuthService {
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
-      // Check if user profile exists (only if db is available)
-      if (db) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
-        if (!userDoc.exists()) {
-          // Create new user profile
-          const userProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email!,
-            displayName: user.displayName || 'User',
-            tier: 'free',
-            subscriptionStatus: 'none',
-            createdAt: new Date(),
-            lastLogin: new Date(),
-            usage: {
-              daily: {
-                count: 0,
-                date: new Date().toISOString().split('T')[0]
-              },
-              monthly: {
-                count: 0,
-                month: new Date().toISOString().slice(0, 7)
-              },
-              total: 0
-            },
-            progress: {
-              totalQuestions: 0,
-              subjectStats: {},
-              streakDays: 0,
-              lastActiveDate: new Date().toISOString().split('T')[0]
-            }
-          };
-
-          await setDoc(doc(db, 'users', user.uid), {
-            ...userProfile,
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp()
-          });
-
-          this.userProfile = userProfile;
-        } else {
-          // Update last login
-          await updateDoc(doc(db, 'users', user.uid), {
-            lastLogin: serverTimestamp()
-          });
-          await this.loadUserProfile(user.uid);
+      // Create a basic user profile first
+      const userProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email!,
+        displayName: user.displayName || 'User',
+        tier: 'free',
+        subscriptionStatus: 'none',
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        usage: {
+          daily: { count: 0, date: new Date().toISOString().split('T')[0] },
+          monthly: { count: 0, month: new Date().toISOString().slice(0, 7) },
+          total: 0
+        },
+        progress: {
+          totalQuestions: 0,
+          subjectStats: {},
+          streakDays: 0,
+          lastActiveDate: new Date().toISOString().split('T')[0]
         }
-      } else {
-        // If no db, create a basic profile
-        this.userProfile = {
-          uid: user.uid,
-          email: user.email!,
-          displayName: user.displayName || 'User',
-          tier: 'free',
-          subscriptionStatus: 'none',
-          createdAt: new Date(),
-          lastLogin: new Date(),
-          usage: {
-            daily: { count: 0, date: new Date().toISOString().split('T')[0] },
-            monthly: { count: 0, month: new Date().toISOString().slice(0, 7) },
-            total: 0
-          },
-          progress: {
-            totalQuestions: 0,
-            subjectStats: {},
-            streakDays: 0,
-            lastActiveDate: new Date().toISOString().split('T')[0]
+      };
+
+      // Set the profile immediately for offline scenarios
+      this.userProfile = userProfile;
+
+      // Try to sync with Firestore if available
+      if (db) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          
+          if (!userDoc.exists()) {
+            // Create new user profile in Firestore
+            await setDoc(doc(db, 'users', user.uid), {
+              ...userProfile,
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp()
+            });
+          } else {
+            // Load existing profile from Firestore
+            const data = userDoc.data();
+            this.userProfile = {
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              lastLogin: data.lastLogin?.toDate() || new Date(),
+              subscriptionExpiry: data.subscriptionExpiry?.toDate()
+            } as UserProfile;
+
+            // Update last login
+            await updateDoc(doc(db, 'users', user.uid), {
+              lastLogin: serverTimestamp()
+            });
           }
-        };
+        } catch (error) {
+          console.warn('Firestore operation failed, continuing with local profile:', error);
+          // Continue with the basic profile we created above
+        }
       }
 
       return this.userProfile!;
     } catch (error: any) {
       console.error('Google sign in error:', error);
       
-      // Provide more specific error messages and preserve the original error code
+      // Provide more specific error messages
       if (error.code === 'auth/popup-closed-by-user') {
-        const customError = new Error('Sign-in was cancelled. Please try again.');
-        customError.code = error.code;
-        throw customError;
+        throw new Error('Sign-in was cancelled. Please try again.');
       } else if (error.code === 'auth/popup-blocked') {
-        const customError = new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
-        customError.code = error.code;
-        throw customError;
+        throw new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
       } else if (error.code === 'auth/unauthorized-domain') {
-        const customError = new Error('This domain is not authorized for Google Sign-In. Please contact support.');
-        customError.code = error.code;
-        throw customError;
+        throw new Error('This domain is not authorized for Google Sign-In. Please contact support.');
       } else if (error.code === 'auth/operation-not-allowed') {
-        const customError = new Error('Google Sign-In is not enabled. Please contact support.');
-        customError.code = error.code;
-        throw customError;
+        throw new Error('Google Sign-In is not enabled. Please contact support.');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      } else if (error.message && error.message.includes('offline')) {
+        throw new Error('You appear to be offline. Please check your internet connection and try again.');
       } else {
-        // Preserve the original error code for better error handling
-        const customError = new Error(`Google Sign-In failed: ${error.message}`);
-        customError.code = error.code;
-        throw customError;
+        throw new Error(`Google Sign-In failed: ${error.message || 'Unknown error'}`);
       }
     }
   }
@@ -310,7 +302,30 @@ class AuthService {
   // Load user profile from Firestore
   private async loadUserProfile(uid: string): Promise<void> {
     if (!db) {
-      console.warn('Firestore is not initialized. Cannot load user profile.');
+      console.warn('Firestore is not initialized. Using basic profile.');
+      // Create a basic profile if Firestore is not available
+      if (this.currentUser) {
+        this.userProfile = {
+          uid: this.currentUser.uid,
+          email: this.currentUser.email!,
+          displayName: this.currentUser.displayName || 'User',
+          tier: 'free',
+          subscriptionStatus: 'none',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          usage: {
+            daily: { count: 0, date: new Date().toISOString().split('T')[0] },
+            monthly: { count: 0, month: new Date().toISOString().slice(0, 7) },
+            total: 0
+          },
+          progress: {
+            totalQuestions: 0,
+            subjectStats: {},
+            streakDays: 0,
+            lastActiveDate: new Date().toISOString().split('T')[0]
+          }
+        };
+      }
       return;
     }
 
@@ -324,9 +339,56 @@ class AuthService {
           lastLogin: data.lastLogin?.toDate() || new Date(),
           subscriptionExpiry: data.subscriptionExpiry?.toDate()
         } as UserProfile;
+      } else {
+        // Create a basic profile if document doesn't exist
+        if (this.currentUser) {
+          this.userProfile = {
+            uid: this.currentUser.uid,
+            email: this.currentUser.email!,
+            displayName: this.currentUser.displayName || 'User',
+            tier: 'free',
+            subscriptionStatus: 'none',
+            createdAt: new Date(),
+            lastLogin: new Date(),
+            usage: {
+              daily: { count: 0, date: new Date().toISOString().split('T')[0] },
+              monthly: { count: 0, month: new Date().toISOString().slice(0, 7) },
+              total: 0
+            },
+            progress: {
+              totalQuestions: 0,
+              subjectStats: {},
+              streakDays: 0,
+              lastActiveDate: new Date().toISOString().split('T')[0]
+            }
+          };
+        }
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.warn('Error loading user profile from Firestore:', error);
+      // Create a basic profile as fallback
+      if (this.currentUser) {
+        this.userProfile = {
+          uid: this.currentUser.uid,
+          email: this.currentUser.email!,
+          displayName: this.currentUser.displayName || 'User',
+          tier: 'free',
+          subscriptionStatus: 'none',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          usage: {
+            daily: { count: 0, date: new Date().toISOString().split('T')[0] },
+            monthly: { count: 0, month: new Date().toISOString().slice(0, 7) },
+            total: 0
+          },
+          progress: {
+            totalQuestions: 0,
+            subjectStats: {},
+            streakDays: 0,
+            lastActiveDate: new Date().toISOString().split('T')[0]
+          }
+        };
+      }
     }
   }
 
@@ -338,8 +400,8 @@ class AuthService {
       try {
         await updateDoc(doc(db, 'users', this.currentUser.uid), updates);
       } catch (error) {
-        console.error('Error updating user profile:', error);
-        throw error;
+        console.warn('Error updating user profile in Firestore:', error);
+        // Continue with local update
       }
     }
 
