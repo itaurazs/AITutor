@@ -96,7 +96,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       await authService.signInWithGoogle();
       onSuccess();
     } catch (error: any) {
-      setError(error.message || 'Google sign-in failed. Please try again.');
+      // Enhanced error message for popup blocked errors
+      if (error.message && error.message.includes('popup-blocked')) {
+        setError('Pop-up blocked by your browser. Please check your browser\'s address bar for a pop-up blocker icon and allow pop-ups for this site, then try again.');
+      } else {
+        setError(error.message || 'Google sign-in failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
