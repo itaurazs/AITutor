@@ -160,6 +160,21 @@ function App() {
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
+    
+    // Scroll to top immediately when subject is selected
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Alternative: Scroll to question input area specifically
+    setTimeout(() => {
+      const questionInputElement = document.getElementById('question-input-section');
+      if (questionInputElement) {
+        questionInputElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   const canMakeAIRequest = (): { allowed: boolean; reason?: string } => {
@@ -257,6 +272,18 @@ function App() {
     setCurrentQuestion(question);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
+    
+    // Scroll to question input when sample question is selected
+    setTimeout(() => {
+      const questionInputElement = document.getElementById('question-input-section');
+      if (questionInputElement) {
+        questionInputElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   const loadFromHistory = (item: Question) => {
@@ -267,6 +294,9 @@ function App() {
     if (subject) {
       setSelectedSubject(subject);
     }
+    
+    // Scroll to top when loading from history
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAuthSuccess = () => {
@@ -597,7 +627,7 @@ function App() {
               </div>
 
               {/* Question Input */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div id="question-input-section" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <div className={`p-2 rounded-lg ${selectedSubject.bgColor} mr-3`}>
                     <div className={`h-5 w-5 ${selectedSubject.color}`}></div>
