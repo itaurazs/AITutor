@@ -6,6 +6,11 @@ interface AboutPageProps {
 }
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onBack }) => {
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const features = [
     {
       icon: Brain,

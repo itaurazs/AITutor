@@ -16,6 +16,11 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onBack }) => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,

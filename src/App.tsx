@@ -148,6 +148,9 @@ function App() {
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
+    
+    // Scroll to top of the page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubjectSelect = (subject: Subject) => {

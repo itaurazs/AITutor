@@ -18,6 +18,11 @@ interface Testimonial {
 }
 
 export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({ onBack }) => {
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const testimonials: Testimonial[] = [
     {
       id: '1',

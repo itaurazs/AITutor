@@ -17,6 +17,11 @@ export const FAQPage: React.FC<FAQPageProps> = ({ onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const faqs: FAQItem[] = [
     {
       id: '1',
