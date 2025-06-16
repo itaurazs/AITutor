@@ -1,6 +1,6 @@
 import { 
-  signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
   User,
@@ -12,11 +12,13 @@ import {
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
+export type UserTier = 'free' | 'premium' | 'unlimited';
+
 export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  tier: 'free' | 'premium' | 'unlimited';
+  tier: UserTier;
   subscriptionId?: string;
   subscriptionStatus: 'active' | 'cancelled' | 'expired' | 'none';
   subscriptionExpiry?: Date;
@@ -161,6 +163,16 @@ class AuthService {
 
     try {
       const provider = new GoogleAuthProvider();
+      
+      // Add additional scopes if needed
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      // Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
@@ -236,9 +248,21 @@ class AuthService {
       }
 
       return this.userProfile!;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign in error:', error);
-      throw error;
+      
+      // Provide more specific error messages
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('Sign-in was cancelled. Please try again.');
+      } else if (error.code === 'auth/popup-blocked') {
+        throw new Error('Pop-up was blocked by your browser. Please allow pop-ups and try again.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        throw new Error('This domain is not authorized for Google Sign-In. Please contact support.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Google Sign-In is not enabled. Please contact support.');
+      } else {
+        throw new Error(`Google Sign-In failed: ${error.message}`);
+      }
     }
   }
 

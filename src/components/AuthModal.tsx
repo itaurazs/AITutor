@@ -162,6 +162,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
           )}
 
+          {/* Firebase Configuration Warning */}
+          {!authService.isFirebaseConfigured() && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm text-yellow-800">
+                  Authentication is not available. Please configure Firebase to enable sign-in features.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Google Sign In */}
           {mode !== 'reset' && authService.isFirebaseConfigured() && (
             <button
@@ -177,18 +189,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </svg>
               <span>Continue with Google</span>
             </button>
-          )}
-
-          {/* Firebase Configuration Warning */}
-          {!authService.isFirebaseConfigured() && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-yellow-800">
-                  Firebase is not configured. Please set up your Firebase credentials to enable authentication.
-                </span>
-              </div>
-            </div>
           )}
 
           {/* Divider */}

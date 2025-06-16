@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,7 +25,6 @@ const hasValidConfig = firebaseConfig.apiKey &&
 let app;
 let auth;
 let db;
-let analytics = null;
 
 if (hasValidConfig) {
   // Initialize Firebase only if we have valid configuration
@@ -37,16 +35,6 @@ if (hasValidConfig) {
   
   // Initialize Cloud Firestore and get a reference to the service
   db = getFirestore(app);
-  
-  // Initialize Analytics only in browser environment and with valid config
-  if (typeof window !== 'undefined') {
-    try {
-      analytics = getAnalytics(app);
-    } catch (error) {
-      console.warn('Firebase Analytics initialization failed:', error);
-      analytics = null;
-    }
-  }
 } else {
   console.warn('Firebase configuration is missing or invalid. Please check your environment variables.');
   
@@ -55,5 +43,5 @@ if (hasValidConfig) {
   db = null;
 }
 
-export { auth, db, analytics };
+export { auth, db };
 export default app;
