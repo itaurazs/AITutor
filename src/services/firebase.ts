@@ -16,7 +16,12 @@ const firebaseConfig = {
 const hasValidConfig = firebaseConfig.apiKey && 
                       firebaseConfig.authDomain && 
                       firebaseConfig.projectId &&
-                      firebaseConfig.apiKey !== 'your_firebase_api_key';
+                      firebaseConfig.apiKey !== 'your_firebase_api_key' &&
+                      firebaseConfig.apiKey !== 'your_actual_firebase_api_key_here' &&
+                      firebaseConfig.authDomain !== 'your-actual-project.firebaseapp.com' &&
+                      firebaseConfig.projectId !== 'your-actual-project-id' &&
+                      !firebaseConfig.apiKey.includes('your_') &&
+                      !firebaseConfig.apiKey.includes('your-');
 
 let app;
 let auth;
