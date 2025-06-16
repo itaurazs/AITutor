@@ -163,7 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           )}
 
           {/* Google Sign In */}
-          {mode !== 'reset' && (
+          {mode !== 'reset' && authService.isFirebaseConfigured() && (
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
@@ -179,8 +179,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </button>
           )}
 
+          {/* Firebase Configuration Warning */}
+          {!authService.isFirebaseConfigured() && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm text-yellow-800">
+                  Firebase is not configured. Please set up your Firebase credentials to enable authentication.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Divider */}
-          {mode !== 'reset' && (
+          {mode !== 'reset' && authService.isFirebaseConfigured() && (
             <div className="relative mb-4">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -285,7 +297,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !authService.isFirebaseConfigured()}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold flex items-center justify-center space-x-2"
             >
               {isLoading ? (
