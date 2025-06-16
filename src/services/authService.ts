@@ -11,7 +11,8 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { UserTier } from '../Services/userTierManager';
+
+export type UserTier = 'free' | 'premium' | 'unlimited';
 
 export interface UserProfile {
   uid: string;
