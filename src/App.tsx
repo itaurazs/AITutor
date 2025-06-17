@@ -582,14 +582,6 @@ function App() {
               </div>
             </div>
 
-            {/* Sample Questions */}
-            {selectedSubject && selectedSubject.available && (
-              <SampleQuestions
-                subject={selectedSubject}
-                onQuestionSelect={handleQuestionSelect}
-              />
-            )}
-
             {/* Question Input */}
             {selectedSubject && selectedSubject.available && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
