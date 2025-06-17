@@ -26,10 +26,14 @@ import { ProgressTracker } from './components/ProgressTracker';
 import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
 import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
 import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
+import { StreakTracker } from './components/StreakTracker';
+import { CelebrationModal } from './components/CelebrationModal';
+import { BadgesPage } from './components/BadgesPage';
+import { SoundProvider, SoundToggle, useSounds } from './components/SoundManager';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
-function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMathStrand, setSelectedMathStrand] = useState<string | null>(null);
@@ -61,8 +65,16 @@ function App() {
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Gamification
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationAchievement, setCelebrationAchievement] = useState<any>(null);
+  const [showBadgesPage, setShowBadgesPage] = useState(false);
+
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
+
+  // Sound context
+  const { playSound } = useSounds();
 
   // Check if device is mobile
   useEffect(() => {
@@ -277,6 +289,7 @@ function App() {
         const updatedProfile = authService.getUserProfile();
         if (updatedProfile) {
           setUser(updatedProfile);
+          checkForNewAchievements(updatedProfile);
         }
       } else {
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -310,6 +323,56 @@ function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const checkForNewAchievements = (userProfile: UserProfile) => {
+    // Check for milestone achievements
+    const totalQuestions = userProfile.progress.totalQuestions;
+    const streakDays = userProfile.progress.streakDays;
+    
+    // Check for question milestones
+    if (totalQuestions === 1) {
+      showAchievementCelebration({
+        name: 'Getting Started',
+        description: 'Asked your first question',
+        icon: Target,
+        rarity: 'common',
+        type: 'badge'
+      });
+    } else if (totalQuestions === 10) {
+      showAchievementCelebration({
+        name: 'Curious Mind',
+        description: 'Asked 10 questions',
+        icon: Brain,
+        rarity: 'common',
+        type: 'badge'
+      });
+    } else if (totalQuestions === 50) {
+      showAchievementCelebration({
+        name: 'Knowledge Seeker',
+        description: 'Asked 50 questions',
+        icon: Target,
+        rarity: 'rare',
+        type: 'badge'
+      });
+    }
+    
+    // Check for streak milestones
+    if (streakDays === 3 || streakDays === 7 || streakDays === 14 || streakDays === 30) {
+      showAchievementCelebration({
+        name: `${streakDays} Day Streak`,
+        description: `Maintained a ${streakDays}-day learning streak`,
+        icon: Flame,
+        rarity: streakDays >= 30 ? 'legendary' : streakDays >= 14 ? 'epic' : 'rare',
+        type: 'streak'
+      });
+    }
+  };
+
+  const showAchievementCelebration = (achievement: any) => {
+    setCelebrationAchievement(achievement);
+    setShowCelebration(true);
+    playSound('achievement');
   };
 
   const handleSampleQuestion = (question: string) => {
@@ -356,44 +419,36 @@ function App() {
     setShowAssessmentResults(true);
   };
 
+  const handleOnboardingComplete = (preferences: UserPreferences) => {
+    setShowOnboarding(false);
+    if (preferences.hasAccount) {
+      setShowAuthModal(true);
+    }
+    // Store preferences in localStorage or user profile
+    localStorage.setItem('userPreferences', JSON.stringify(preferences));
+  };
+
   const handleStartLearning = (strand: string) => {
     setShowAssessmentResults(false);
-    
-    // Find the subject and strand
     const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
     if (mathSubject) {
       setSelectedSubject(mathSubject);
-      
-      // Find the specific strand
-      const strandId = strand.toLowerCase().replace(/\s+/g, '-').replace('&', '');
-      const foundStrand = year7MathStrands.find(s => 
-        s.name.toLowerCase().includes(strand.toLowerCase()) ||
-        s.id.includes(strandId)
-      );
-      
-      if (foundStrand) {
-        setSelectedMathStrand(foundStrand.id);
+      // Find the strand and select it
+      const strandData = year7MathStrands.find(s => s.name === strand);
+      if (strandData) {
+        setSelectedMathStrand(strandData.id);
       }
     }
-    
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCreateAccount = () => {
-    setShowAssessmentResults(false);
-    setShowAuthModal(true);
-  };
-
-  const handleOnboardingComplete = (preferences: UserPreferences) => {
-    setShowOnboarding(false);
-    
-    if (preferences.hasAccount) {
-      setShowAuthModal(true);
-    } else {
-      // Continue as guest - maybe show a welcome message
-      console.log('User preferences:', preferences);
-    }
+  const handleStreakMilestone = (days: number) => {
+    showAchievementCelebration({
+      name: `${days} Day Streak!`,
+      description: `Maintained a ${days}-day learning streak`,
+      icon: Flame,
+      rarity: days >= 30 ? 'legendary' : days >= 14 ? 'epic' : 'rare',
+      type: 'streak'
+    });
   };
 
   const getRemainingQuestions = (): number => {
@@ -460,6 +515,9 @@ function App() {
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Sound Toggle */}
+              <SoundToggle />
+
               {/* AI Toggle - Mobile Optimized */}
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <label className="flex items-center space-x-1 sm:space-x-2 cursor-pointer">
@@ -480,24 +538,32 @@ function App() {
 
               {/* User Authentication - Mobile Optimized */}
               {user ? (
-                <button
-                  onClick={() => setShowUserProfile(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
-                >
-                  <img
-                    src={user.avatar || '/avatars/avatar1.svg'}
-                    alt="Avatar"
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
-                  />
-                  <span className="hidden sm:inline text-sm">{user.displayName}</span>
-                  <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
-                    user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
-                    user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {user.tier}
+                <div className="flex items-center space-x-2">
+                  {/* Streak Display */}
+                  <div className="flex items-center space-x-1 px-2 py-1 bg-orange-50 rounded-lg border border-orange-200">
+                    <span className="text-lg">{getStreakEmoji(user.progress.streakDays)}</span>
+                    <span className="text-sm font-bold text-orange-900">{user.progress.streakDays}</span>
                   </div>
-                </button>
+
+                  <button
+                    onClick={() => setShowUserProfile(true)}
+                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
+                  >
+                    <img
+                      src={user.avatar || '/avatars/avatar1.svg'}
+                      alt="Avatar"
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
+                    />
+                    <span className="hidden sm:inline text-sm">{user.displayName}</span>
+                    <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
+                      user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
+                      user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {user.tier}
+                    </div>
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
@@ -516,6 +582,17 @@ function App() {
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Progress</span>
+                </button>
+              )}
+
+              {/* Badges Button */}
+              {user && (
+                <button
+                  onClick={() => setShowBadgesPage(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-colors border border-yellow-200 touch-manipulation"
+                >
+                  <Target className="h-4 w-4" />
+                  <span className="hidden sm:inline text-sm">Badges</span>
                 </button>
               )}
               
@@ -588,6 +665,14 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* Streak Tracker for Mathematics */}
+            {user && (
+              <StreakTracker 
+                userProfile={user} 
+                onStreakMilestone={handleStreakMilestone}
+              />
+            )}
 
             {/* Progress Tracker for Mathematics */}
             {user && (
@@ -721,23 +806,21 @@ function App() {
                 </div>
               </div>
 
-              {/* Assessment Quiz Button */}
-              <div className="mb-6 sm:mb-8">
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-4 sm:p-6 text-center">
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Find Your Year 7 Maths Starting Point</h3>
+              {/* Assessment Quiz CTA */}
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 sm:p-6 border border-green-200 mb-6">
+                <div className="text-center">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                    Find Your Year 7 Maths Starting Point
+                  </h3>
                   <p className="text-sm sm:text-base text-gray-600 mb-4">
-                    Take our quick 5-question assessment to discover your strengths and get personalized recommendations
+                    Take our 2-minute diagnostic quiz to get personalized recommendations
                   </p>
                   <button
                     onClick={() => setShowAssessmentQuiz(true)}
-                    className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-2 mx-auto"
+                    className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl touch-manipulation"
                   >
-                    <Target className="h-5 w-5" />
-                    <span>Take Free Assessment Quiz (2 minutes)</span>
+                    Take Free Assessment Quiz (2 min)
                   </button>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                    🇦🇺 Australian Curriculum v9.0 aligned • No signup required
-                  </p>
                 </div>
               </div>
 
@@ -749,14 +832,6 @@ function App() {
                 >
                   Start Your Year 7 Maths Journey
                 </button>
-                <div className="mt-4">
-                  <button
-                    onClick={() => setShowOnboarding(true)}
-                    className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
-                  >
-                    New here? Take the 30-second tour
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -1135,13 +1210,30 @@ function App() {
         onClose={() => setShowAssessmentResults(false)}
         results={assessmentResults!}
         onStartLearning={handleStartLearning}
-        onCreateAccount={handleCreateAccount}
+        onCreateAccount={() => {
+          setShowAssessmentResults(false);
+          setShowAuthModal(true);
+        }}
       />
 
       <OnboardingFlow
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
         onComplete={handleOnboardingComplete}
+      />
+
+      <CelebrationModal
+        isOpen={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        achievement={celebrationAchievement}
+        onShare={() => {
+          // Implement sharing functionality
+          console.log('Sharing achievement:', celebrationAchievement);
+        }}
+        onDownloadCertificate={() => {
+          // Implement certificate download
+          console.log('Downloading certificate for:', celebrationAchievement);
+        }}
       />
 
       {user && (
@@ -1158,9 +1250,22 @@ function App() {
             onClose={() => setShowProgressDashboard(false)}
             userProfile={user}
           />
+
+          <BadgesPage
+            userProfile={user}
+            onClose={() => setShowBadgesPage(false)}
+          />
         </>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <SoundProvider>
+      <AppContent />
+    </SoundProvider>
   );
 }
 
