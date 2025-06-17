@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, Atom, BookOpen, Scroll, Globe, TrendingUp, GraduationCap, User, Settings, History, Menu, X, HelpCircle, MessageCircle, Info, Star, AlertTriangle, CheckCircle, Target, Award } from 'lucide-react';
+import { Calculator, Atom, BookOpen, Scroll, Globe, TrendingUp, GraduationCap, User, Settings, History, Menu, X, HelpCircle, MessageCircle, Info, Star, AlertTriangle, CheckCircle, Target, Award, Library } from 'lucide-react';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
 import { subjects } from './data/subjects';
@@ -23,6 +23,7 @@ import { SmartHintSystem } from './components/SmartHintSystem';
 import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
 import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
 import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
+import { LessonLibrary } from './components/LessonLibrary';
 import { hintService } from './services/hintService';
 import { year7MathStrands } from './data/mathStrands';
 import { MathStrandCard } from './components/MathStrandCard';
@@ -54,6 +55,7 @@ function App() {
   const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
   const [showAssessmentResults, setShowAssessmentResults] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showLessonLibrary, setShowLessonLibrary] = useState(false);
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
   
   // User state
@@ -316,6 +318,7 @@ function App() {
     setShowAssessmentQuiz(false);
     setShowAssessmentResults(false);
     setShowOnboarding(false);
+    setShowLessonLibrary(false);
   };
 
   // Render different views
@@ -406,6 +409,13 @@ function App() {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-6">
               <button
+                onClick={() => setShowLessonLibrary(true)}
+                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <Library className="h-4 w-4" />
+                <span>Lessons</span>
+              </button>
+              <button
                 onClick={() => setCurrentView('about')}
                 className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
               >
@@ -492,6 +502,16 @@ function App() {
           {showMobileMenu && (
             <div className="md:hidden border-t border-gray-100 py-4">
               <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setShowLessonLibrary(true);
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Library className="h-4 w-4" />
+                  <span>Lessons</span>
+                </button>
                 <button
                   onClick={() => {
                     setCurrentView('about');
@@ -877,6 +897,13 @@ function App() {
           isOpen={showOnboarding}
           onClose={() => setShowOnboarding(false)}
           onComplete={handleOnboardingComplete}
+        />
+      )}
+
+      {showLessonLibrary && (
+        <LessonLibrary
+          isOpen={showLessonLibrary}
+          onClose={() => setShowLessonLibrary(false)}
         />
       )}
     </div>
