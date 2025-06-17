@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Play, Eye, Zap, ArrowRight, CheckCircle, Lightbulb, Target } from 'lucide-react';
+import { BookOpen, Play, Eye, Zap, ArrowRight, CheckCircle, Lightbulb, Target, X } from 'lucide-react';
 
 interface ConceptExplainerProps {
   concept: string;
@@ -178,7 +178,7 @@ Whatever you do to one side of an equation, you must do to the other side.
               onClick={onClose}
               className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white hover:bg-opacity-10 rounded-lg"
             >
-              ×
+              <X className="h-6 w-6" />
             </button>
           </div>
 
