@@ -3,34 +3,31 @@ import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Z
 import { subjects } from './data/subjects';
 import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
-import { MathStrand } from './data/mathStrands';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
 import authService, { UserProfile } from './services/authService';
 import { SubjectCard } from './components/SubjectCard';
-import { MathStrandCard } from './components/MathStrandCard';
-import { MathStrandDetail } from './components/MathStrandDetail';
 import { SampleQuestions } from './components/SampleQuestions';
-import { EducationalResources } from './components/EducationalResources';
-import { GamificationBadges } from './components/GamificationBadges';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { UserProfile as UserProfileModal } from './components/UserProfile';
-import { ComingSoonModal } from './components/ComingSoonModal';
 import { Footer } from './components/Footer';
 import { ContactPage } from './components/ContactPage';
 import { AboutPage } from './components/AboutPage';
 import { FAQPage } from './components/FAQPage';
 import { TestimonialsPage } from './components/TestimonialsPage';
+import { ComingSoonModal } from './components/ComingSoonModal';
+import { MathStrandCard } from './components/MathStrandCard';
+import { MathStrandDetail } from './components/MathStrandDetail';
+import { GamificationBadges } from './components/GamificationBadges';
+import { EducationalResources } from './components/EducationalResources';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
-type CurrentView = 'subjects' | 'math-strands' | 'strand-detail' | 'question-interface';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
-  const [currentView, setCurrentView] = useState<CurrentView>('subjects');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [selectedStrand, setSelectedStrand] = useState<MathStrand | null>(null);
+  const [selectedMathStrand, setSelectedMathStrand] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentSteps, setCurrentSteps] = useState<Step[]>([]);
@@ -51,6 +48,20 @@ function App() {
   // Coming Soon Modal
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [comingSoonSubject, setComingSoonSubject] = useState<Subject | null>(null);
+
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Initialize auth state
   useEffect(() => {
@@ -78,9 +89,8 @@ function App() {
     checkAIConnection();
   }, []);
 
-  // Track visitors and online status (existing code)
+  // Track visitors and online status
   useEffect(() => {
-    // Initialize or get base visitor count
     const initializeVisitorCount = () => {
       const storedCount = localStorage.getItem('totalVisitorCount');
       const lastUpdate = localStorage.getItem('lastVisitorUpdate');
@@ -158,9 +168,8 @@ function App() {
 
   const handleNavigate = (page: CurrentPage) => {
     setCurrentPage(page);
-    setCurrentView('subjects');
     setSelectedSubject(null);
-    setSelectedStrand(null);
+    setSelectedMathStrand(null);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
@@ -177,41 +186,28 @@ function App() {
     }
 
     setSelectedSubject(subject);
-    
-    // If it's Year 7 Mathematics, show the strands view
-    if (subject.id === 'year7-mathematics') {
-      setCurrentView('math-strands');
-    } else {
-      setCurrentView('question-interface');
-    }
-    
+    setSelectedMathStrand(null);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
     
-    // Scroll to top immediately when subject is selected
+    // Scroll to top smoothly for better mobile experience
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleStrandSelect = (strand: MathStrand) => {
-    setSelectedStrand(strand);
-    setCurrentView('strand-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleBackToStrands = () => {
-    setSelectedStrand(null);
-    setCurrentView('math-strands');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleBackToSubjects = () => {
-    setSelectedSubject(null);
-    setSelectedStrand(null);
-    setCurrentView('subjects');
+  const handleMathStrandSelect = (strandId: string) => {
+    setSelectedMathStrand(strandId);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
     setCurrentQuestion('');
+    
+    // Scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToMathOverview = () => {
+    setSelectedMathStrand(null);
+    // Scroll to top smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -220,7 +216,6 @@ function App() {
       return { allowed: false, reason: 'Please sign in to use AI features' };
     }
 
-    // Check daily limits based on tier
     const today = new Date().toISOString().split('T')[0];
     const dailyCount = user.usage.daily.date === today ? user.usage.daily.count : 0;
 
@@ -245,9 +240,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentQuestion.trim()) return;
+    if (!currentQuestion.trim() || (!selectedSubject && !selectedMathStrand)) return;
 
-    // Check if user can make AI request
     if (useAI && aiConnectionStatus === 'connected') {
       const canUse = canMakeAIRequest();
       if (!canUse.allowed) {
@@ -257,40 +251,24 @@ function App() {
     }
 
     setIsLoading(true);
-    setCurrentView('question-interface');
     
     try {
       let solution;
-      let subjectForSolution = selectedSubject;
+      const subjectForAI = selectedSubject || { 
+        id: selectedMathStrand || 'year7-mathematics', 
+        name: 'Year 7 Mathematics' 
+      };
       
-      // If we're in a strand, create a temporary subject for the solution
-      if (selectedStrand) {
-        subjectForSolution = {
-          id: selectedStrand.id,
-          name: selectedStrand.name,
-          icon: selectedStrand.icon,
-          color: selectedStrand.color,
-          bgColor: selectedStrand.bgColor,
-          description: selectedStrand.description,
-          available: true,
-          sampleQuestions: selectedStrand.sampleQuestions
-        };
-      }
-      
-      if (useAI && aiConnectionStatus === 'connected' && user && subjectForSolution) {
-        // Use AI service
-        solution = await aiService.generateSolution(currentQuestion, subjectForSolution);
-        // Record AI usage
-        await authService.recordAIUsage(subjectForSolution.id);
-        // Update local user state
+      if (useAI && aiConnectionStatus === 'connected' && user) {
+        solution = await aiService.generateSolution(currentQuestion, subjectForAI as Subject);
+        await authService.recordAIUsage(subjectForAI.id);
         const updatedProfile = authService.getUserProfile();
         if (updatedProfile) {
           setUser(updatedProfile);
         }
       } else {
-        // Fallback to local generation
         await new Promise(resolve => setTimeout(resolve, 2000));
-        const localSolution = generateStepByStepSolution(currentQuestion, subjectForSolution?.id || 'mathematics');
+        const localSolution = generateStepByStepSolution(currentQuestion, subjectForAI.id);
         solution = {
           steps: localSolution.steps,
           keyPoints: localSolution.keyPoints,
@@ -304,7 +282,7 @@ function App() {
       const newQuestion: Question = {
         id: Date.now().toString(),
         question: currentQuestion,
-        subject: subjectForSolution?.name || 'Mathematics',
+        subject: subjectForAI.name,
         steps: solution.steps,
         keyPoints: solution.keyPoints,
         timestamp: new Date(),
@@ -313,8 +291,8 @@ function App() {
       setQuestionHistory(prev => [newQuestion, ...prev]);
     } catch (error) {
       console.error('Error generating solution:', error);
-      // Fallback to local generation on error
-      const localSolution = generateStepByStepSolution(currentQuestion, selectedStrand?.id || selectedSubject?.id || 'mathematics');
+      const subjectId = selectedSubject?.id || selectedMathStrand || 'year7-mathematics';
+      const localSolution = generateStepByStepSolution(currentQuestion, subjectId);
       setCurrentSteps(localSolution.steps);
       setCurrentKeyPoints(localSolution.keyPoints);
     } finally {
@@ -326,19 +304,6 @@ function App() {
     setCurrentQuestion(question);
     setCurrentSteps([]);
     setCurrentKeyPoints([]);
-    setCurrentView('question-interface');
-    
-    // Scroll to question input when sample question is selected
-    setTimeout(() => {
-      const questionInputElement = document.getElementById('question-input-section');
-      if (questionInputElement) {
-        questionInputElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        });
-      }
-    }, 100);
   };
 
   const loadFromHistory = (item: Question) => {
@@ -348,11 +313,7 @@ function App() {
     const subject = subjects.find(s => s.name === item.subject);
     if (subject) {
       setSelectedSubject(subject);
-      setCurrentView('question-interface');
     }
-    
-    // Scroll to top when loading from history
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAuthSuccess = () => {
@@ -424,50 +385,26 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-blue-100">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+      {/* Header - Mobile Optimized */}
+      <header className="bg-white shadow-sm border-b border-blue-100 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
-                <GraduationCap className="h-8 w-8 text-white" />
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 sm:p-2 rounded-xl">
+                <GraduationCap className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Your AI Tutor
                 </h1>
-                <p className="text-sm text-gray-600">Australian Curriculum v9.0 aligned for Year 7 Mathematics</p>
+                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Multi-subject learning companion for grades 7-12</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Navigation Breadcrumbs */}
-              {currentView !== 'subjects' && (
-                <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
-                  <button
-                    onClick={handleBackToSubjects}
-                    className="hover:text-blue-600 transition-colors"
-                  >
-                    Subjects
-                  </button>
-                  {selectedSubject && (
-                    <>
-                      <span>/</span>
-                      <span className="text-blue-600">{selectedSubject.name}</span>
-                    </>
-                  )}
-                  {selectedStrand && (
-                    <>
-                      <span>/</span>
-                      <span className="text-purple-600">{selectedStrand.name}</span>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* AI Toggle */}
-              <div className="flex items-center space-x-2">
-                <label className="flex items-center space-x-2 cursor-pointer">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* AI Toggle - Mobile Optimized */}
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <label className="flex items-center space-x-1 sm:space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={useAI}
@@ -475,7 +412,7 @@ function App() {
                     disabled={aiConnectionStatus !== 'connected' || !user}
                     className="rounded"
                   />
-                  <span className="text-sm text-gray-700">Use AI</span>
+                  <span className="text-xs sm:text-sm text-gray-700 hidden sm:inline">Use AI</span>
                 </label>
                 <div className={`w-2 h-2 rounded-full ${
                   aiConnectionStatus === 'connected' ? 'bg-green-500' : 
@@ -483,19 +420,19 @@ function App() {
                 }`}></div>
               </div>
 
-              {/* User Authentication */}
+              {/* User Authentication - Mobile Optimized */}
               {user ? (
                 <button
                   onClick={() => setShowUserProfile(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200"
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
                 >
                   <img
                     src={user.avatar || '/avatars/avatar1.svg'}
-                    alt="User Avatar"
-                    className="w-6 h-6 rounded-full"
+                    alt="Avatar"
+                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
                   />
-                  <span className="hidden sm:inline">{user.displayName}</span>
-                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  <span className="hidden sm:inline text-sm">{user.displayName}</span>
+                  <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
                     user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
                     user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
@@ -506,73 +443,119 @@ function App() {
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors"
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
                 >
                   <LogIn className="h-4 w-4" />
-                  <span>Sign In</span>
+                  <span className="text-sm">Sign In</span>
                 </button>
               )}
               
-              {/* Online Visitors Counter */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
-                <div className="relative">
-                  <Wifi className="h-4 w-4" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              {/* Visitor Counters - Mobile Optimized */}
+              <div className="hidden sm:flex items-center space-x-2">
+                <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
+                  <div className="relative">
+                    <Wifi className="h-4 w-4" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <span className="text-sm font-semibold">{onlineVisitors}</span>
+                  <span className="text-xs text-emerald-600">online</span>
                 </div>
-                <span className="text-sm font-semibold">{onlineVisitors}</span>
-                <span className="text-xs text-emerald-600 hidden sm:inline">online</span>
-              </div>
-              
-              {/* Total Visitors Counter */}
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg border border-blue-200">
-                <Users className="h-4 w-4" />
-                <span className="text-sm font-semibold">{visitorCount.toLocaleString()}</span>
-                <span className="text-xs text-blue-600 hidden sm:inline">total</span>
+                
+                <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg border border-blue-200">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm font-semibold">{visitorCount.toLocaleString()}</span>
+                  <span className="text-xs text-blue-600">total</span>
+                </div>
               </div>
               
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation"
               >
                 <History className="h-4 w-4" />
-                <span className="hidden sm:inline">History</span>
+                <span className="hidden sm:inline text-sm">History</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Subject Selection */}
-        {currentView === 'subjects' && (
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-8">
-              <div className="text-center mb-8">
-                <div className="bg-gradient-to-r from-blue-100 to-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Brain className="h-8 w-8 text-blue-600" />
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 lg:px-8">
+        {/* Math Strand Detail View */}
+        {selectedMathStrand && (
+          <MathStrandDetail
+            strand={year7MathStrands.find(s => s.id === selectedMathStrand)!}
+            onBack={handleBackToMathOverview}
+            onQuestionSelect={handleSampleQuestion}
+          />
+        )}
+
+        {/* Year 7 Mathematics Overview */}
+        {selectedSubject && selectedSubject.id === 'year7-mathematics' && !selectedMathStrand && (
+          <div className="space-y-4 sm:space-y-8">
+            {/* Subject Header - Mobile Optimized */}
+            <div className={`${selectedSubject.bgColor} rounded-2xl shadow-sm border border-current p-4 sm:p-6`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <div className="bg-white p-2 sm:p-3 rounded-xl">
+                    <div className={`h-6 w-6 sm:h-8 sm:w-8 ${selectedSubject.color}`}>
+                      {/* Icon will be rendered by SubjectCard component logic */}
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className={`text-xl sm:text-2xl font-bold ${selectedSubject.color}`}>
+                      {selectedSubject.name}
+                    </h2>
+                    <p className={`text-sm sm:text-base ${selectedSubject.color.replace('600', '700')}`}>
+                      {selectedSubject.description}
+                    </p>
+                  </div>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Master Year 7 Mathematics with AI</h2>
-                <p className="text-gray-600 max-w-2xl mx-auto mb-4">
-                  Personalized tutoring for Australian students following Curriculum v9.0. 
-                  Get step-by-step explanations that help you learn, not just get answers.
-                </p>
                 <button
-                  onClick={() => {
-                    const year7Math = subjects.find(s => s.id === 'year7-mathematics');
-                    if (year7Math) handleSubjectSelect(year7Math);
-                  }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl"
+                  onClick={() => setSelectedSubject(null)}
+                  className={`px-3 sm:px-4 py-2 bg-white ${selectedSubject.color} rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base touch-manipulation`}
                 >
-                  Start Your Year 7 Maths Journey
+                  Change Subject
                 </button>
+              </div>
+            </div>
+
+            {/* Math Strands Grid - Mobile Optimized */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">Choose Your Mathematics Strand</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {year7MathStrands.map((strand) => (
+                  <MathStrandCard
+                    key={strand.id}
+                    strand={strand}
+                    onSelect={() => handleMathStrandSelect(strand.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subject Selection */}
+        {!selectedSubject && (
+          <div className="space-y-6 sm:space-y-8">
+            {/* Welcome Section - Mobile Optimized */}
+            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4 sm:p-8">
+              <div className="text-center mb-6 sm:mb-8">
+                <div className="bg-gradient-to-r from-blue-100 to-purple-100 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Master Year 7 Mathematics with AI</h2>
+                <p className="text-sm sm:text-xl text-gray-600 max-w-3xl mx-auto">
+                  Australian Curriculum Aligned - Personalized tutoring for Australian students following Curriculum v9.0
+                </p>
                 
                 {/* AI Status Banner */}
                 {aiConnectionStatus !== 'connected' && (
-                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center justify-center space-x-2">
                       <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm text-yellow-800">
+                      <span className="text-xs sm:text-sm text-yellow-800">
                         {aiConnectionStatus === 'checking' 
                           ? 'Checking AI connection...' 
                           : 'AI service unavailable - using local solutions'
@@ -584,46 +567,101 @@ function App() {
 
                 {/* Authentication Prompt */}
                 {!user && (
-                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center justify-center space-x-2">
-                      <User className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm text-blue-800">
-                        Sign in to unlock AI-powered explanations and track your progress
-                      </span>
+                  <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-2">
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4 text-blue-600" />
+                        <span className="text-xs sm:text-sm text-blue-800">
+                          Sign in to unlock AI-powered explanations and track your progress
+                        </span>
+                      </div>
                       <button
                         onClick={() => setShowAuthModal(true)}
-                        className="ml-2 text-blue-600 hover:text-blue-700 font-semibold text-sm underline"
+                        className="text-blue-600 hover:text-blue-700 font-semibold text-xs sm:text-sm underline touch-manipulation"
                       >
                         Sign In
                       </button>
                     </div>
                   </div>
                 )}
+
+                {/* User Progress Display - Mobile Optimized */}
+                {user && (
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-3 sm:p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                        <div className="text-center">
+                          <div className="text-lg sm:text-xl font-bold text-orange-900 flex items-center justify-center">
+                            {getStreakEmoji(user.progress.streakDays)}
+                            <span className="ml-1">{user.progress.streakDays}</span>
+                          </div>
+                          <div className="text-xs sm:text-sm text-orange-700">Day Streak</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                        <div className="text-center">
+                          <div className="text-lg sm:text-xl font-bold text-blue-900">
+                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
+                              ? user.usage.daily.count 
+                              : 0
+                            }
+                          </div>
+                          <div className="text-xs sm:text-sm text-blue-700">Today's Questions</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 sm:p-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                        <div className="text-center">
+                          <div className="text-lg sm:text-xl font-bold text-green-900">{user.progress.totalQuestions}</div>
+                          <div className="text-xs sm:text-sm text-green-700">Total Questions</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="text-center p-4 bg-blue-50 rounded-xl">
-                  <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-blue-900">Step-by-Step</h3>
-                  <p className="text-sm text-blue-700">Every solution broken down clearly</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-xl">
+                  <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
+                  <h3 className="font-semibold text-blue-900 text-sm sm:text-base">Step-by-Step</h3>
+                  <p className="text-xs sm:text-sm text-blue-700">Every solution broken down clearly</p>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-xl">
-                  <Brain className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-green-900">Curriculum Aligned</h3>
-                  <p className="text-sm text-green-700">Australian Curriculum v9.0 focused</p>
+                <div className="text-center p-3 sm:p-4 bg-green-50 rounded-xl">
+                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mx-auto mb-2" />
+                  <h3 className="font-semibold text-green-900 text-sm sm:text-base">Australian Curriculum</h3>
+                  <p className="text-xs sm:text-sm text-green-700">Aligned with Curriculum v9.0</p>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-xl">
-                  <Zap className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-purple-900">Learn Concepts</h3>
-                  <p className="text-sm text-purple-700">Understand the 'why' behind each step</p>
+                <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-xl">
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 mx-auto mb-2" />
+                  <h3 className="font-semibold text-purple-900 text-sm sm:text-base">Learn Concepts</h3>
+                  <p className="text-xs sm:text-sm text-purple-700">Understand the 'why' behind each step</p>
                 </div>
+              </div>
+
+              {/* CTA Button - Mobile Optimized */}
+              <div className="text-center">
+                <button
+                  onClick={() => handleSubjectSelect(subjects.find(s => s.id === 'year7-mathematics')!)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
+                >
+                  Start Your Year 7 Maths Journey
+                </button>
               </div>
             </div>
 
-            {/* Subject Grid */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Choose Your Subject</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Subject Grid - Mobile Optimized */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">All Subjects</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {subjects.map((subject) => (
                   <SubjectCard
                     key={subject.id}
@@ -637,100 +675,45 @@ function App() {
           </div>
         )}
 
-        {/* Math Strands View */}
-        {currentView === 'math-strands' && selectedSubject && (
-          <div className="space-y-8">
-            {/* Header */}
-            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-8">
-              <button
-                onClick={handleBackToSubjects}
-                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors mb-6"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180" />
-                <span>Back to Subjects</span>
-              </button>
-              
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                  Year 7 Mathematics Strands
-                </h1>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
-                  Explore the 6 key areas of the Australian Curriculum v9.0 for Year 7 Mathematics. 
-                  Each strand builds essential mathematical understanding and skills.
-                </p>
-                <div className="bg-green-100 text-green-800 text-sm px-4 py-2 rounded-full inline-block font-semibold">
-                  ✅ Australian Curriculum v9.0 Aligned
-                </div>
-              </div>
-            </div>
-
-            {/* Strands Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {year7MathStrands.map((strand) => (
-                <MathStrandCard
-                  key={strand.id}
-                  strand={strand}
-                  onSelect={() => handleStrandSelect(strand)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Strand Detail View */}
-        {currentView === 'strand-detail' && selectedStrand && (
-          <MathStrandDetail
-            strand={selectedStrand}
-            onBack={handleBackToStrands}
-            onQuestionSelect={handleSampleQuestion}
-          />
-        )}
-
-        {/* Question Interface */}
-        {currentView === 'question-interface' && (selectedSubject || selectedStrand) && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Subject-Specific Interface (for non-math subjects) */}
+        {selectedSubject && selectedSubject.id !== 'year7-mathematics' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Subject/Strand Header */}
-              <div className={`${(selectedStrand || selectedSubject)?.bgColor} rounded-2xl shadow-sm border border-current p-6`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white p-3 rounded-xl">
-                      <div className={`h-8 w-8 ${(selectedStrand || selectedSubject)?.color}`}>
-                        {/* Icon will be rendered by component logic */}
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              {/* Subject Header */}
+              <div className={`${selectedSubject.bgColor} rounded-2xl shadow-sm border border-current p-4 sm:p-6`}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="bg-white p-2 sm:p-3 rounded-xl">
+                      <div className={`h-6 w-6 sm:h-8 sm:w-8 ${selectedSubject.color}`}>
+                        {/* Icon will be rendered by SubjectCard component logic */}
                       </div>
                     </div>
                     <div>
-                      <h2 className={`text-2xl font-bold ${(selectedStrand || selectedSubject)?.color}`}>
-                        {selectedStrand?.name || selectedSubject?.name}
+                      <h2 className={`text-xl sm:text-2xl font-bold ${selectedSubject.color}`}>
+                        {selectedSubject.name}
                       </h2>
-                      <p className={`${(selectedStrand || selectedSubject)?.color.replace('600', '700')}`}>
-                        {selectedStrand?.description || selectedSubject?.description}
+                      <p className={`text-sm sm:text-base ${selectedSubject.color.replace('600', '700')}`}>
+                        {selectedSubject.description}
                       </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => {
-                      if (selectedStrand) {
-                        handleBackToStrands();
-                      } else {
-                        handleBackToSubjects();
-                      }
-                    }}
-                    className={`px-4 py-2 bg-white ${(selectedStrand || selectedSubject)?.color} rounded-lg hover:bg-gray-50 transition-colors`}
+                    onClick={() => setSelectedSubject(null)}
+                    className={`px-3 sm:px-4 py-2 bg-white ${selectedSubject.color} rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base touch-manipulation`}
                   >
-                    {selectedStrand ? 'Back to Strands' : 'Change Subject'}
+                    Change Subject
                   </button>
                 </div>
               </div>
 
-              {/* Question Input */}
-              <div id="question-input-section" className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <div className={`p-2 rounded-lg ${(selectedStrand || selectedSubject)?.bgColor} mr-3`}>
-                    <div className={`h-5 w-5 ${(selectedStrand || selectedSubject)?.color}`}></div>
+              {/* Question Input - Mobile Optimized */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className={`p-2 rounded-lg ${selectedSubject.bgColor} mr-3`}>
+                    <div className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedSubject.color}`}></div>
                   </div>
-                  Ask Your {selectedStrand?.name || selectedSubject?.name} Question
+                  Ask Your {selectedSubject.name} Question
                   {useAI && aiConnectionStatus === 'connected' && user && (
                     <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                       AI Powered
@@ -741,18 +724,18 @@ function App() {
                   <textarea
                     value={currentQuestion}
                     onChange={(e) => setCurrentQuestion(e.target.value)}
-                    placeholder={`Type your ${(selectedStrand?.name || selectedSubject?.name)?.toLowerCase()} question here...`}
-                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
+                    placeholder={`Type your ${selectedSubject.name.toLowerCase()} question here...`}
+                    className="w-full p-3 sm:p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
+                    rows={isMobile ? 3 : 4}
                   />
                   <button
                     type="submit"
                     disabled={!currentQuestion.trim() || isLoading}
-                    className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2`}
+                    className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 text-sm sm:text-base touch-manipulation`}
                   >
                     {isLoading ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent"></div>
                         <span>
                           {useAI && aiConnectionStatus === 'connected' && user
                             ? 'AI is thinking...' 
@@ -762,7 +745,7 @@ function App() {
                       </>
                     ) : (
                       <>
-                        <Send className="h-5 w-5" />
+                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                         <span>Get Step-by-Step Solution</span>
                       </>
                     )}
@@ -770,52 +753,52 @@ function App() {
                 </form>
               </div>
 
-              {/* Step-by-Step Solution */}
+              {/* Step-by-Step Solution - Mobile Optimized */}
               {currentSteps.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-4 sm:p-6">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
                     <div className="bg-green-100 p-2 rounded-lg mr-3">
-                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                     </div>
                     Step-by-Step Solution
                   </h3>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {currentSteps.map((step, index) => (
                       <div key={step.number} className="relative">
-                        {/* Step Card */}
-                        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
-                          <div className="flex items-start space-x-4">
+                        {/* Step Card - Mobile Optimized */}
+                        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 sm:p-6 border border-green-200">
+                          <div className="flex items-start space-x-3 sm:space-x-4">
                             {/* Step Number */}
                             <div className="flex-shrink-0">
-                              <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs sm:text-sm">
                                 {step.number}
                               </div>
                             </div>
                             
                             {/* Step Content */}
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                              <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                                 {step.title}
                               </h4>
-                              <p className="text-gray-700 mb-3">
+                              <p className="text-sm sm:text-base text-gray-700 mb-3">
                                 {step.content}
                               </p>
                               
                               {/* Formula/Calculation Display */}
                               {step.formula && (
-                                <div className="bg-white rounded-lg p-4 border border-gray-200 mb-2">
-                                  <code className="text-blue-800 font-mono text-lg whitespace-pre-line">
+                                <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 mb-2">
+                                  <code className="text-blue-800 font-mono text-sm sm:text-lg whitespace-pre-line break-all">
                                     {step.formula}
                                   </code>
                                 </div>
                               )}
                               
                               {step.calculation && (
-                                <div className="bg-green-100 rounded-lg p-4 border border-green-300 mb-2">
+                                <div className="bg-green-100 rounded-lg p-3 sm:p-4 border border-green-300 mb-2">
                                   <div className="flex items-center space-x-2">
-                                    <ArrowRight className="h-4 w-4 text-green-600" />
-                                    <code className="text-green-800 font-mono text-lg font-semibold">
+                                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
+                                    <code className="text-green-800 font-mono text-sm sm:text-lg font-semibold break-all">
                                       {step.calculation}
                                     </code>
                                   </div>
@@ -823,10 +806,10 @@ function App() {
                               )}
                               
                               {step.example && (
-                                <div className="bg-blue-100 rounded-lg p-4 border border-blue-300">
+                                <div className="bg-blue-100 rounded-lg p-3 sm:p-4 border border-blue-300">
                                   <div className="flex items-start space-x-2">
-                                    <span className="text-blue-600 font-semibold text-sm">Example:</span>
-                                    <span className="text-blue-800 text-sm">{step.example}</span>
+                                    <span className="text-blue-600 font-semibold text-xs sm:text-sm flex-shrink-0">Example:</span>
+                                    <span className="text-blue-800 text-xs sm:text-sm">{step.example}</span>
                                   </div>
                                 </div>
                               )}
@@ -837,7 +820,7 @@ function App() {
                         {/* Connector Line */}
                         {index < currentSteps.length - 1 && (
                           <div className="flex justify-center py-2">
-                            <div className="w-0.5 h-6 bg-gradient-to-b from-green-300 to-blue-300"></div>
+                            <div className="w-0.5 h-4 sm:h-6 bg-gradient-to-b from-green-300 to-blue-300"></div>
                           </div>
                         )}
                       </div>
@@ -846,16 +829,16 @@ function App() {
 
                   {/* Key Learning Points */}
                   {currentKeyPoints.length > 0 && (
-                    <div className="mt-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                      <h4 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
-                        <CheckCircle className="h-5 w-5 text-purple-600 mr-2" />
+                    <div className="mt-6 sm:mt-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 sm:p-6 border border-purple-200">
+                      <h4 className="text-base sm:text-lg font-semibold text-purple-900 mb-4 flex items-center">
+                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 mr-2" />
                         Key Learning Points
                       </h4>
                       <ul className="space-y-2">
                         {currentKeyPoints.map((point, index) => (
                           <li key={index} className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-purple-800">{point}</span>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <span className="text-purple-800 text-sm sm:text-base">{point}</span>
                           </li>
                         ))}
                       </ul>
@@ -865,21 +848,20 @@ function App() {
               )}
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* User Stats - Only show when signed in */}
+            {/* Sidebar - Mobile Optimized */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* User Stats */}
               {user && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Progress</h3>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Your Progress</h3>
                   
-                  {/* Progress Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {/* Learning Streak */}
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2">
-                        <Flame className="h-4 w-4 text-orange-600" />
+                  {/* Progress Stats Grid - Mobile Optimized */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-2 sm:p-3">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <Flame className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
                         <div>
-                          <div className="text-lg font-bold text-orange-900 flex items-center">
+                          <div className="text-sm sm:text-lg font-bold text-orange-900 flex items-center">
                             {getStreakEmoji(user.progress.streakDays)}
                             <span className="ml-1">{user.progress.streakDays}</span>
                           </div>
@@ -888,12 +870,11 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Today's Questions */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2">
-                        <Target className="h-4 w-4 text-blue-600" />
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <Target className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                         <div>
-                          <div className="text-lg font-bold text-blue-900">
+                          <div className="text-sm sm:text-lg font-bold text-blue-900">
                             {user.usage.daily.date === new Date().toISOString().split('T')[0] 
                               ? user.usage.daily.count 
                               : 0
@@ -904,23 +885,21 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Total Questions */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2">
-                        <Brain className="h-4 w-4 text-green-600" />
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-2 sm:p-3">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <Brain className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                         <div>
-                          <div className="text-lg font-bold text-green-900">{user.progress.totalQuestions}</div>
+                          <div className="text-sm sm:text-lg font-bold text-green-900">{user.progress.totalQuestions}</div>
                           <div className="text-xs text-green-700">Total</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Subjects Used */}
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="h-4 w-4 bg-purple-600 rounded-full"></div>
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-2 sm:p-3">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <div className="h-3 w-3 sm:h-4 sm:w-4 bg-purple-600 rounded-full"></div>
                         <div>
-                          <div className="text-lg font-bold text-purple-900">
+                          <div className="text-sm sm:text-lg font-bold text-purple-900">
                             {Object.keys(user.progress.subjectStats).length}
                           </div>
                           <div className="text-xs text-purple-700">Subjects</div>
@@ -930,10 +909,10 @@ function App() {
                   </div>
 
                   {/* Usage Details */}
-                  <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <div className="space-y-2 sm:space-y-3 border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Daily Limit</span>
-                      <span className="font-semibold">
+                      <span className="text-xs sm:text-sm text-gray-600">Daily Limit</span>
+                      <span className="font-semibold text-xs sm:text-sm">
                         {user.usage.daily.date === new Date().toISOString().split('T')[0] 
                           ? user.usage.daily.count 
                           : 0
@@ -945,7 +924,7 @@ function App() {
                   {user.tier === 'free' && (
                     <button
                       onClick={() => setShowSubscriptionModal(true)}
-                      className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm font-semibold"
+                      className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-xs sm:text-sm font-semibold touch-manipulation"
                     >
                       Upgrade for More Questions
                     </button>
@@ -953,41 +932,24 @@ function App() {
                 </div>
               )}
 
-              {/* Gamification Badges */}
-              {user && (
-                <GamificationBadges userProfile={user} />
-              )}
-
-              {/* Educational Resources */}
-              <EducationalResources subject={selectedStrand?.id || selectedSubject?.id} />
-
               {/* Sample Questions */}
               <SampleQuestions
-                subject={selectedStrand ? {
-                  id: selectedStrand.id,
-                  name: selectedStrand.name,
-                  icon: selectedStrand.icon,
-                  color: selectedStrand.color,
-                  bgColor: selectedStrand.bgColor,
-                  description: selectedStrand.description,
-                  available: true,
-                  sampleQuestions: selectedStrand.sampleQuestions
-                } : selectedSubject!}
+                subject={selectedSubject}
                 onQuestionSelect={handleSampleQuestion}
               />
 
-              {/* Question History */}
+              {/* Question History - Mobile Optimized */}
               {showHistory && questionHistory.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Questions</h3>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Questions</h3>
+                  <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
                     {questionHistory.slice(0, user?.tier === 'free' ? 10 : questionHistory.length).map((item) => (
                       <div
                         key={item.id}
-                        className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                        className="p-2 sm:p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors touch-manipulation"
                         onClick={() => loadFromHistory(item)}
                       >
-                        <p className="text-sm text-gray-800 line-clamp-2">{item.question}</p>
+                        <p className="text-xs sm:text-sm text-gray-800 line-clamp-2">{item.question}</p>
                         <div className="flex items-center justify-between mt-1">
                           <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                             {item.subject}
@@ -1002,10 +964,18 @@ function App() {
                 </div>
               )}
 
-              {/* Study Tips */}
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-sm border border-orange-100 p-6">
-                <h3 className="text-lg font-semibold text-orange-900 mb-4">Study Tips</h3>
-                <ul className="space-y-2 text-sm text-orange-800">
+              {/* Gamification Badges - Mobile Optimized */}
+              {user && (
+                <GamificationBadges userProfile={user} />
+              )}
+
+              {/* Educational Resources */}
+              <EducationalResources subject={selectedSubject?.id} />
+
+              {/* Study Tips - Mobile Optimized */}
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-sm border border-orange-100 p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-orange-900 mb-4">Study Tips</h3>
+                <ul className="space-y-2 text-xs sm:text-sm text-orange-800">
                   <li className="flex items-start">
                     <span className="text-orange-600 mr-2">•</span>
                     Follow each step carefully and understand why it's needed
