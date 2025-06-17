@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3, UserPlus, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3 } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
 import authService, { UserProfile } from './services/authService';
-import { hintService } from './services/hintService';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
 import { AuthModal } from './components/AuthModal';
@@ -24,13 +23,12 @@ import { GamificationBadges } from './components/GamificationBadges';
 import { EducationalResources } from './components/EducationalResources';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { ProgressTracker } from './components/ProgressTracker';
-import { AssessmentQuiz, AssessmentResults as AssessmentResultsType } from './components/AssessmentQuiz';
-import { AssessmentResults } from './components/AssessmentResults';
+import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
+import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
 import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
 import { StreakTracker } from './components/StreakTracker';
 import { CelebrationModal } from './components/CelebrationModal';
 import { BadgesPage } from './components/BadgesPage';
-import { SoundProvider, SoundToggle, useSounds } from './components/SoundManager';
 import { ParentSignup } from './components/ParentSignup';
 import { ParentDashboard } from './components/ParentDashboard';
 import { ParentControls } from './components/ParentControls';
@@ -38,11 +36,11 @@ import { SmartHintSystem } from './components/SmartHintSystem';
 import { ConceptExplainer } from './components/ConceptExplainer';
 import { AlternativeSolutionModal } from './components/AlternativeSolutionModal';
 import { WhyItWorksModal } from './components/WhyItWorksModal';
-import { LearningAnalytics } from './components/LearningAnalytics';
+import { hintService } from './services/hintService';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
-function AppContent() {
+function App() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedMathStrand, setSelectedMathStrand] = useState<string | null>(null);
@@ -71,7 +69,7 @@ function AppContent() {
   // Assessment and Onboarding
   const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
   const [showAssessmentResults, setShowAssessmentResults] = useState(false);
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResultsType | null>(null);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Gamification
@@ -84,20 +82,14 @@ function AppContent() {
   const [showParentDashboard, setShowParentDashboard] = useState(false);
   const [showParentControls, setShowParentControls] = useState(false);
 
-  // Smart Hints & Help System
-  const [incorrectAttempts, setIncorrectAttempts] = useState(0);
+  // Smart Hints System
   const [showConceptExplainer, setShowConceptExplainer] = useState(false);
   const [showAlternativeSolution, setShowAlternativeSolution] = useState(false);
   const [showWhyItWorks, setShowWhyItWorks] = useState(false);
   const [currentConcept, setCurrentConcept] = useState('');
-  const [showLearningAnalytics, setShowLearningAnalytics] = useState(false);
-  const [hintUsageHistory, setHintUsageHistory] = useState<any[]>([]);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
-
-  // Sound system
-  const { playSound } = useSounds();
 
   // Check if device is mobile
   useEffect(() => {
@@ -134,9 +126,6 @@ function AppContent() {
     };
 
     checkAIConnection();
-
-    // Load hint usage history
-    setHintUsageHistory(hintService.getHintUsageHistory());
   }, []);
 
   // Track visitors and online status
@@ -339,14 +328,6 @@ function AppContent() {
       };
       
       setQuestionHistory(prev => [newQuestion, ...prev]);
-
-      // Reset incorrect attempts when a new solution is generated
-      setIncorrectAttempts(0);
-
-      // Check for achievements after question completion
-      if (user) {
-        checkForAchievements(user);
-      }
     } catch (error) {
       console.error('Error generating solution:', error);
       const subjectId = selectedSubject?.id || selectedMathStrand || 'year7-mathematics';
@@ -355,88 +336,6 @@ function AppContent() {
       setCurrentKeyPoints(localSolution.keyPoints);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleIncorrectAttempt = () => {
-    const newAttempts = incorrectAttempts + 1;
-    setIncorrectAttempts(newAttempts);
-    
-    // Play sound for incorrect attempt
-    playSound('button');
-    
-    // After 2 incorrect attempts, show hint system
-    if (newAttempts >= 2) {
-      // Detect concept from question
-      const concept = detectConcept(currentQuestion);
-      setCurrentConcept(concept);
-    }
-  };
-
-  const detectConcept = (question: string): string => {
-    if (question.toLowerCase().includes('fraction')) return 'fractions';
-    if (question.toLowerCase().includes('percent')) return 'percentages';
-    if (question.toLowerCase().includes('algebra') || question.includes('equation') || question.includes('solve for x')) return 'algebra';
-    if (question.toLowerCase().includes('area') || question.includes('perimeter')) return 'measurement';
-    if (question.toLowerCase().includes('angle') || question.includes('triangle') || question.includes('rectangle')) return 'geometry';
-    if (question.toLowerCase().includes('mean') || question.includes('median') || question.includes('mode')) return 'statistics';
-    return 'mathematics';
-  };
-
-  const handleHintUsed = (level: number, helpful: boolean) => {
-    // Record hint usage
-    const questionId = Date.now().toString();
-    const subject = selectedSubject?.name || 'Mathematics';
-    const concept = currentConcept || detectConcept(currentQuestion);
-    
-    hintService.recordHintUsage(questionId, level, helpful, subject, concept);
-    
-    // Update hint usage history
-    setHintUsageHistory(hintService.getHintUsageHistory());
-    
-    // Play sound
-    playSound(helpful ? 'achievement' : 'button');
-  };
-
-  const handleExplainConcept = () => {
-    const concept = currentConcept || detectConcept(currentQuestion);
-    setCurrentConcept(concept);
-    setShowConceptExplainer(true);
-  };
-
-  const handleShowAlternative = () => {
-    setShowAlternativeSolution(true);
-  };
-
-  const handleShowWhy = () => {
-    const concept = currentConcept || detectConcept(currentQuestion);
-    setCurrentConcept(concept);
-    setShowWhyItWorks(true);
-  };
-
-  const checkForAchievements = (userProfile: UserProfile) => {
-    const totalQuestions = userProfile.progress.totalQuestions;
-    const streakDays = userProfile.progress.streakDays;
-    
-    // Check for milestone achievements
-    const milestones = [1, 10, 25, 50, 100];
-    const justReached = milestones.find(m => totalQuestions === m);
-    
-    if (justReached) {
-      const achievement = {
-        name: justReached === 1 ? 'Getting Started' : 
-              justReached === 10 ? 'Curious Mind' :
-              justReached === 25 ? 'Half Way Hero' :
-              justReached === 50 ? 'Knowledge Seeker' : 'Year 7 Graduate',
-        description: `Completed ${justReached} question${justReached > 1 ? 's' : ''}`,
-        icon: justReached === 100 ? Target : CheckCircle,
-        rarity: justReached >= 50 ? 'epic' : justReached >= 25 ? 'rare' : 'common',
-        type: 'milestone'
-      };
-      
-      setCelebrationAchievement(achievement);
-      setShowCelebration(true);
-      playSound('achievement');
     }
   };
 
@@ -478,42 +377,79 @@ function AppContent() {
     setShowUserProfile(false);
   };
 
-  const handleAssessmentComplete = (results: AssessmentResultsType) => {
+  // Assessment handlers
+  const handleAssessmentComplete = (results: AssessmentResults) => {
     setAssessmentResults(results);
     setShowAssessmentQuiz(false);
     setShowAssessmentResults(true);
   };
 
+  const handleStartLearning = (strand: string) => {
+    setShowAssessmentResults(false);
+    const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
+    if (mathSubject) {
+      setSelectedSubject(mathSubject);
+      // Find the strand and select it
+      const strandData = year7MathStrands.find(s => s.name.toLowerCase().includes(strand.toLowerCase()));
+      if (strandData) {
+        setSelectedMathStrand(strandData.id);
+      }
+    }
+  };
+
+  const handleCreateAccount = () => {
+    setShowAssessmentResults(false);
+    setShowAuthModal(true);
+  };
+
+  // Onboarding handlers
   const handleOnboardingComplete = (preferences: UserPreferences) => {
     setShowOnboarding(false);
     if (preferences.hasAccount) {
       setShowAuthModal(true);
     } else {
       // Continue as guest
-      console.log('User preferences:', preferences);
+      const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
+      if (mathSubject) {
+        setSelectedSubject(mathSubject);
+      }
     }
   };
 
-  const handleStreakMilestone = (days: number) => {
-    const achievement = {
-      name: days >= 30 ? 'Dedication Master' : 
-            days >= 14 ? 'Two Week Warrior' :
-            days >= 7 ? 'Week Warrior' : 'Consistent Learner',
-      description: `Maintained a ${days}-day learning streak`,
-      icon: Flame,
-      rarity: days >= 30 ? 'legendary' : days >= 7 ? 'rare' : 'common',
-      type: 'streak'
-    };
+  // Smart Hints handlers
+  const handleHintUsed = (level: number, helpful: boolean) => {
+    const subjectName = selectedSubject?.name || 'Mathematics';
+    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
+                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
+                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
     
-    setCelebrationAchievement(achievement);
-    setShowCelebration(true);
-    playSound('streak');
+    hintService.recordHintUsage(
+      Date.now().toString(),
+      level,
+      helpful,
+      subjectName,
+      concept
+    );
   };
 
-  const handleRecommendation = (topic: string, action: string) => {
-    // Implement recommendation action
-    console.log(`Recommendation for ${topic}: ${action}`);
-    // Could show a specific learning path or resources
+  const handleExplainConcept = () => {
+    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
+                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
+                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
+    setCurrentConcept(concept);
+    setShowConceptExplainer(true);
+  };
+
+  const handleShowAlternative = () => {
+    setShowAlternativeSolution(true);
+  };
+
+  const handleShowWhy = () => {
+    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
+                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
+                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
+    setCurrentConcept(concept);
+    setShowWhyItWorks(true);
   };
 
   const getRemainingQuestions = (): number => {
@@ -580,9 +516,6 @@ function AppContent() {
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Sound Toggle */}
-              <SoundToggle />
-
               {/* AI Toggle - Mobile Optimized */}
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <label className="flex items-center space-x-1 sm:space-x-2 cursor-pointer">
@@ -603,55 +536,32 @@ function AppContent() {
 
               {/* User Authentication - Mobile Optimized */}
               {user ? (
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setShowUserProfile(true)}
-                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
-                  >
-                    <img
-                      src={user.avatar || '/avatars/avatar1.svg'}
-                      alt="Avatar"
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
-                    />
-                    <span className="hidden sm:inline text-sm">{user.displayName}</span>
-                    <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
-                      user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
-                      user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user.tier}
-                    </div>
-                  </button>
-                  
-                  {/* Parent Dashboard Button */}
-                  <button
-                    onClick={() => setShowParentDashboard(true)}
-                    className="flex items-center space-x-1 px-2 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 touch-manipulation"
-                    title="Parent Dashboard"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline text-sm">Parent</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowUserProfile(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
+                >
+                  <img
+                    src={user.avatar || '/avatars/avatar1.svg'}
+                    alt="Avatar"
+                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
+                  />
+                  <span className="hidden sm:inline text-sm">{user.displayName}</span>
+                  <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
+                    user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
+                    user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.tier}
+                  </div>
+                </button>
               ) : (
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    <span className="text-sm">Sign In</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setShowParentSignup(true)}
-                    className="flex items-center space-x-1 px-2 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors touch-manipulation"
-                    title="Parent Account"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline text-sm">Parent</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span className="text-sm">Sign In</span>
+                </button>
               )}
               
               {/* Progress Dashboard Button */}
@@ -738,14 +648,6 @@ function AppContent() {
             {/* Progress Tracker for Mathematics */}
             {user && (
               <ProgressTracker userProfile={user} />
-            )}
-
-            {/* Streak Tracker */}
-            {user && (
-              <StreakTracker 
-                userProfile={user} 
-                onStreakMilestone={handleStreakMilestone}
-              />
             )}
 
             {/* Math Strands Grid - Mobile Optimized */}
@@ -875,21 +777,15 @@ function AppContent() {
                 </div>
               </div>
 
-              {/* Assessment and Onboarding Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+              {/* Assessment CTA */}
+              <div className="text-center mb-6">
                 <button
                   onClick={() => setShowAssessmentQuiz(true)}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
+                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation mb-4"
                 >
                   Take Free Assessment Quiz (2 minutes)
                 </button>
-                
-                <button
-                  onClick={() => setShowOnboarding(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
-                >
-                  Quick Setup (30 seconds)
-                </button>
+                <p className="text-sm text-gray-600">Find your Year 7 Maths starting point</p>
               </div>
 
               {/* CTA Button - Mobile Optimized */}
@@ -998,8 +894,8 @@ function AppContent() {
                 </form>
               </div>
 
-              {/* Smart Hint System */}
-              {currentQuestion && !isLoading && (
+              {/* Smart Hints System */}
+              {currentQuestion && (
                 <SmartHintSystem
                   question={currentQuestion}
                   subject={selectedSubject.name}
@@ -1100,59 +996,6 @@ function AppContent() {
                           </li>
                         ))}
                       </ul>
-                    </div>
-                  )}
-
-                  {/* Help Buttons */}
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button
-                      onClick={handleExplainConcept}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
-                    >
-                      <BookOpen className="h-4 w-4" />
-                      <span>Explain This Concept</span>
-                    </button>
-                    <button
-                      onClick={handleShowAlternative}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
-                    >
-                      <Eye className="h-4 w-4" />
-                      <span>Show Me Another Way</span>
-                    </button>
-                    <button
-                      onClick={handleShowWhy}
-                      className="flex items-center space-x-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span>Why Does This Work?</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Learning Analytics Button */}
-              {user && hintUsageHistory.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <BarChart3 className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-semibold text-gray-900">Your Learning Patterns</h3>
-                    </div>
-                    <button
-                      onClick={() => setShowLearningAnalytics(!showLearningAnalytics)}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      {showLearningAnalytics ? 'Hide' : 'View'} Analytics
-                    </button>
-                  </div>
-                  
-                  {showLearningAnalytics && (
-                    <div className="mt-4">
-                      <LearningAnalytics
-                        userProfile={user}
-                        hintUsageHistory={hintUsageHistory}
-                        onRecommendation={handleRecommendation}
-                      />
                     </div>
                   )}
                 </div>
@@ -1333,65 +1176,88 @@ function AppContent() {
         availabilityDate={comingSoonSubject?.availabilityDate}
       />
 
+      {user && (
+        <>
+          <UserProfileModal
+            isOpen={showUserProfile}
+            onClose={() => setShowUserProfile(false)}
+            userProfile={user}
+            onSignOut={handleSignOut}
+          />
+
+          <ProgressDashboard
+            isOpen={showProgressDashboard}
+            onClose={() => setShowProgressDashboard(false)}
+            userProfile={user}
+          />
+        </>
+      )}
+
+      {/* Assessment Quiz */}
       <AssessmentQuiz
         isOpen={showAssessmentQuiz}
         onClose={() => setShowAssessmentQuiz(false)}
         onComplete={handleAssessmentComplete}
       />
 
-      <AssessmentResults
-        isOpen={showAssessmentResults}
-        onClose={() => setShowAssessmentResults(false)}
-        results={assessmentResults!}
-        onStartLearning={(strand) => {
-          setShowAssessmentResults(false);
-          handleSubjectSelect(subjects.find(s => s.id === 'year7-mathematics')!);
-        }}
-        onCreateAccount={() => {
-          setShowAssessmentResults(false);
-          setShowAuthModal(true);
-        }}
-      />
+      {/* Assessment Results */}
+      {assessmentResults && (
+        <AssessmentResultsModal
+          isOpen={showAssessmentResults}
+          onClose={() => setShowAssessmentResults(false)}
+          results={assessmentResults}
+          onStartLearning={handleStartLearning}
+          onCreateAccount={handleCreateAccount}
+        />
+      )}
 
+      {/* Onboarding Flow */}
       <OnboardingFlow
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
         onComplete={handleOnboardingComplete}
       />
 
-      <CelebrationModal
-        isOpen={showCelebration}
-        onClose={() => setShowCelebration(false)}
-        achievement={celebrationAchievement}
-        onShare={() => {
-          // Share achievement functionality
-          console.log('Sharing achievement:', celebrationAchievement);
-        }}
-        onDownloadCertificate={() => {
-          // Download certificate functionality
-          console.log('Downloading certificate for:', celebrationAchievement);
-        }}
-      />
+      {/* Celebration Modal */}
+      {celebrationAchievement && (
+        <CelebrationModal
+          isOpen={showCelebration}
+          onClose={() => setShowCelebration(false)}
+          achievement={celebrationAchievement}
+          onShare={() => {}}
+          onDownloadCertificate={() => {}}
+        />
+      )}
 
+      {/* Badges Page */}
+      {user && (
+        <BadgesPage
+          isOpen={showBadgesPage}
+          onClose={() => setShowBadgesPage(false)}
+          userProfile={user}
+        />
+      )}
+
+      {/* Parent Features */}
       <ParentSignup
         isOpen={showParentSignup}
         onClose={() => setShowParentSignup(false)}
-        onSuccess={() => {
-          setShowParentSignup(false);
-          setShowParentDashboard(true);
-        }}
+        onSuccess={() => {}}
+        childEmail={user?.email}
       />
 
-      <ParentDashboard
-        isOpen={showParentDashboard}
-        onClose={() => setShowParentDashboard(false)}
-        parentProfile={user || {} as UserProfile}
-      />
+      {user && (
+        <ParentDashboard
+          isOpen={showParentDashboard}
+          onClose={() => setShowParentDashboard(false)}
+          parentProfile={user}
+        />
+      )}
 
       <ParentControls
         isOpen={showParentControls}
         onClose={() => setShowParentControls(false)}
-        childName="Sarah Chen"
+        childName={user?.displayName || 'Child'}
         currentSettings={{
           dailyGoal: 5,
           weeklyGoal: 25,
@@ -1403,12 +1269,10 @@ function AppContent() {
           studyTimeLimit: 60,
           allowedSubjects: ['Number', 'Algebra', 'Measurement', 'Space & Geometry', 'Statistics', 'Probability']
         }}
-        onSave={(settings) => {
-          console.log('Saving parent controls:', settings);
-        }}
+        onSave={() => {}}
       />
 
-      {/* Smart Hints & Help System Modals */}
+      {/* Smart Hints Modals */}
       <ConceptExplainer
         isOpen={showConceptExplainer}
         onClose={() => setShowConceptExplainer(false)}
@@ -1429,37 +1293,7 @@ function AppContent() {
         concept={currentConcept}
         subject={selectedSubject?.name || 'Mathematics'}
       />
-
-      {user && (
-        <>
-          <UserProfileModal
-            isOpen={showUserProfile}
-            onClose={() => setShowUserProfile(false)}
-            userProfile={user}
-            onSignOut={handleSignOut}
-          />
-
-          <ProgressDashboard
-            isOpen={showProgressDashboard}
-            onClose={() => setShowProgressDashboard(false)}
-            userProfile={user}
-          />
-
-          <BadgesPage
-            userProfile={user}
-            onClose={() => setShowBadgesPage(false)}
-          />
-        </>
-      )}
     </div>
-  );
-}
-
-function App() {
-  return (
-    <SoundProvider>
-      <AppContent />
-    </SoundProvider>
   );
 }
 
