@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame } from 'lucide-react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3 } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
@@ -21,6 +21,8 @@ import { MathStrandCard } from './components/MathStrandCard';
 import { MathStrandDetail } from './components/MathStrandDetail';
 import { GamificationBadges } from './components/GamificationBadges';
 import { EducationalResources } from './components/EducationalResources';
+import { ProgressDashboard } from './components/ProgressDashboard';
+import { ProgressTracker } from './components/ProgressTracker';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
@@ -42,6 +44,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showProgressDashboard, setShowProgressDashboard] = useState(false);
   const [useAI, setUseAI] = useState(false);
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
@@ -450,6 +453,17 @@ function App() {
                 </button>
               )}
               
+              {/* Progress Dashboard Button */}
+              {user && (
+                <button
+                  onClick={() => setShowProgressDashboard(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-green-50 to-blue-50 text-green-700 rounded-lg hover:from-green-100 hover:to-blue-100 transition-colors border border-green-200 touch-manipulation"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline text-sm">Progress</span>
+                </button>
+              )}
+              
               {/* Visitor Counters - Mobile Optimized */}
               <div className="hidden sm:flex items-center space-x-2">
                 <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
@@ -519,6 +533,11 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* Progress Tracker for Mathematics */}
+            {user && (
+              <ProgressTracker userProfile={user} />
+            )}
 
             {/* Math Strands Grid - Mobile Optimized */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
@@ -1023,12 +1042,20 @@ function App() {
       />
 
       {user && (
-        <UserProfileModal
-          isOpen={showUserProfile}
-          onClose={() => setShowUserProfile(false)}
-          userProfile={user}
-          onSignOut={handleSignOut}
-        />
+        <>
+          <UserProfileModal
+            isOpen={showUserProfile}
+            onClose={() => setShowUserProfile(false)}
+            userProfile={user}
+            onSignOut={handleSignOut}
+          />
+
+          <ProgressDashboard
+            isOpen={showProgressDashboard}
+            onClose={() => setShowProgressDashboard(false)}
+            userProfile={user}
+          />
+        </>
       )}
     </div>
   );
