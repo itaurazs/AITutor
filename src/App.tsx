@@ -23,6 +23,9 @@ import { GamificationBadges } from './components/GamificationBadges';
 import { EducationalResources } from './components/EducationalResources';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { ProgressTracker } from './components/ProgressTracker';
+import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
+import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
+import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
@@ -51,6 +54,12 @@ function App() {
   // Coming Soon Modal
   const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [comingSoonSubject, setComingSoonSubject] = useState<Subject | null>(null);
+
+  // Assessment and Onboarding
+  const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
+  const [showAssessmentResults, setShowAssessmentResults] = useState(false);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -339,6 +348,52 @@ function App() {
     await authService.signOut();
     setUser(null);
     setShowUserProfile(false);
+  };
+
+  const handleAssessmentComplete = (results: AssessmentResults) => {
+    setAssessmentResults(results);
+    setShowAssessmentQuiz(false);
+    setShowAssessmentResults(true);
+  };
+
+  const handleStartLearning = (strand: string) => {
+    setShowAssessmentResults(false);
+    
+    // Find the subject and strand
+    const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
+    if (mathSubject) {
+      setSelectedSubject(mathSubject);
+      
+      // Find the specific strand
+      const strandId = strand.toLowerCase().replace(/\s+/g, '-').replace('&', '');
+      const foundStrand = year7MathStrands.find(s => 
+        s.name.toLowerCase().includes(strand.toLowerCase()) ||
+        s.id.includes(strandId)
+      );
+      
+      if (foundStrand) {
+        setSelectedMathStrand(foundStrand.id);
+      }
+    }
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCreateAccount = () => {
+    setShowAssessmentResults(false);
+    setShowAuthModal(true);
+  };
+
+  const handleOnboardingComplete = (preferences: UserPreferences) => {
+    setShowOnboarding(false);
+    
+    if (preferences.hasAccount) {
+      setShowAuthModal(true);
+    } else {
+      // Continue as guest - maybe show a welcome message
+      console.log('User preferences:', preferences);
+    }
   };
 
   const getRemainingQuestions = (): number => {
@@ -666,6 +721,26 @@ function App() {
                 </div>
               </div>
 
+              {/* Assessment Quiz Button */}
+              <div className="mb-6 sm:mb-8">
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-4 sm:p-6 text-center">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Find Your Year 7 Maths Starting Point</h3>
+                  <p className="text-sm sm:text-base text-gray-600 mb-4">
+                    Take our quick 5-question assessment to discover your strengths and get personalized recommendations
+                  </p>
+                  <button
+                    onClick={() => setShowAssessmentQuiz(true)}
+                    className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-2 mx-auto"
+                  >
+                    <Target className="h-5 w-5" />
+                    <span>Take Free Assessment Quiz (2 minutes)</span>
+                  </button>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                    🇦🇺 Australian Curriculum v9.0 aligned • No signup required
+                  </p>
+                </div>
+              </div>
+
               {/* CTA Button - Mobile Optimized */}
               <div className="text-center">
                 <button
@@ -674,6 +749,14 @@ function App() {
                 >
                   Start Your Year 7 Maths Journey
                 </button>
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowOnboarding(true)}
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm underline"
+                  >
+                    New here? Take the 30-second tour
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1039,6 +1122,26 @@ function App() {
         onClose={() => setShowComingSoonModal(false)}
         subjectName={comingSoonSubject?.name || ''}
         availabilityDate={comingSoonSubject?.availabilityDate}
+      />
+
+      <AssessmentQuiz
+        isOpen={showAssessmentQuiz}
+        onClose={() => setShowAssessmentQuiz(false)}
+        onComplete={handleAssessmentComplete}
+      />
+
+      <AssessmentResultsModal
+        isOpen={showAssessmentResults}
+        onClose={() => setShowAssessmentResults(false)}
+        results={assessmentResults!}
+        onStartLearning={handleStartLearning}
+        onCreateAccount={handleCreateAccount}
+      />
+
+      <OnboardingFlow
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
       />
 
       {user && (

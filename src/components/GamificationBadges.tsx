@@ -135,6 +135,73 @@ export const GamificationBadges: React.FC<GamificationBadgesProps> = ({ userProf
         requirement: '30-day streak',
         earned: streakDays >= 30,
         rarity: 'legendary'
+      },
+      // Strand-specific badges
+      {
+        id: 'number-champion',
+        name: 'Number Champion',
+        description: 'Mastered the Number strand',
+        icon: Trophy,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        requirement: 'Complete Number strand',
+        earned: (userProfile.progress.subjectStats['number']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
+      },
+      {
+        id: 'algebra-explorer',
+        name: 'Algebra Explorer',
+        description: 'Mastered the Algebra strand',
+        icon: Zap,
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+        requirement: 'Complete Algebra strand',
+        earned: (userProfile.progress.subjectStats['algebra']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
+      },
+      {
+        id: 'measurement-master',
+        name: 'Measurement Master',
+        description: 'Mastered the Measurement strand',
+        icon: Target,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100',
+        requirement: 'Complete Measurement strand',
+        earned: (userProfile.progress.subjectStats['measurement']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
+      },
+      {
+        id: 'space-navigator',
+        name: 'Space Navigator',
+        description: 'Mastered the Space & Geometry strand',
+        icon: Star,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100',
+        requirement: 'Complete Space & Geometry strand',
+        earned: (userProfile.progress.subjectStats['space']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
+      },
+      {
+        id: 'statistics-detective',
+        name: 'Statistics Detective',
+        description: 'Mastered the Statistics strand',
+        icon: Shield,
+        color: 'text-teal-600',
+        bgColor: 'bg-teal-100',
+        requirement: 'Complete Statistics strand',
+        earned: (userProfile.progress.subjectStats['statistics']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
+      },
+      {
+        id: 'probability-prophet',
+        name: 'Probability Prophet',
+        description: 'Mastered the Probability strand',
+        icon: Gem,
+        color: 'text-pink-600',
+        bgColor: 'bg-pink-100',
+        requirement: 'Complete Probability strand',
+        earned: (userProfile.progress.subjectStats['probability']?.questionsAsked || 0) >= 10,
+        rarity: 'epic'
       }
     ];
   };
