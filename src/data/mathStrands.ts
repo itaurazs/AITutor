@@ -33,7 +33,7 @@ export const year7MathStrands: MathStrand[] = [
       'Simple interest calculations (AC9M7N07)',
       'Profit, loss and Australian retail (AC9M7N08)'
     ],
-    curriculumCodes: ['AC9M7N01',   'AC9M7N02', 'AC9M7N03', 'AC9M7N04', 'AC9M7N05', 'AC9M7N06', 'AC9M7N07', 'AC9M7N08'],
+    curriculumCodes: ['AC9M7N01', 'AC9M7N02', 'AC9M7N03', 'AC9M7N04', 'AC9M7N05', 'AC9M7N06', 'AC9M7N07', 'AC9M7N08'],
     sampleQuestions: [
       'Sarah is shopping at Woolworths and buys 3 items for $4.50 each. Calculate the total including 10% GST.',
       'The MCG has a capacity of 100,024 people. If 87,543 people attend a match, how many empty seats are there?',
