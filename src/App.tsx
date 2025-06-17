@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3, UserPlus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3, UserPlus, HelpCircle } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
 import { generateStepByStepSolution } from './utils/solutionGenerator';
 import { aiService } from './services/aiService';
 import authService, { UserProfile } from './services/authService';
+import { hintService } from './services/hintService';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
 import { AuthModal } from './components/AuthModal';
@@ -34,18 +35,12 @@ import { ParentSignup } from './components/ParentSignup';
 import { ParentDashboard } from './components/ParentDashboard';
 import { ParentControls } from './components/ParentControls';
 import { SmartHintSystem } from './components/SmartHintSystem';
-import { LearningAnalytics } from './components/LearningAnalytics';
 import { ConceptExplainer } from './components/ConceptExplainer';
+import { AlternativeSolutionModal } from './components/AlternativeSolutionModal';
+import { WhyItWorksModal } from './components/WhyItWorksModal';
+import { LearningAnalytics } from './components/LearningAnalytics';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
-
-interface HintUsageData {
-  level: number;
-  count: number;
-  helpful: number;
-  subject: string;
-  timestamp: Date;
-}
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
@@ -90,11 +85,13 @@ function AppContent() {
   const [showParentControls, setShowParentControls] = useState(false);
 
   // Smart Hints & Help System
-  const [hintUsageHistory, setHintUsageHistory] = useState<HintUsageData[]>([]);
-  const [showLearningAnalytics, setShowLearningAnalytics] = useState(false);
-  const [showConceptExplainer, setShowConceptExplainer] = useState(false);
-  const [currentConcept, setCurrentConcept] = useState('');
   const [incorrectAttempts, setIncorrectAttempts] = useState(0);
+  const [showConceptExplainer, setShowConceptExplainer] = useState(false);
+  const [showAlternativeSolution, setShowAlternativeSolution] = useState(false);
+  const [showWhyItWorks, setShowWhyItWorks] = useState(false);
+  const [currentConcept, setCurrentConcept] = useState('');
+  const [showLearningAnalytics, setShowLearningAnalytics] = useState(false);
+  const [hintUsageHistory, setHintUsageHistory] = useState<any[]>([]);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -137,6 +134,9 @@ function AppContent() {
     };
 
     checkAIConnection();
+
+    // Load hint usage history
+    setHintUsageHistory(hintService.getHintUsageHistory());
   }, []);
 
   // Track visitors and online status
@@ -340,7 +340,7 @@ function AppContent() {
       
       setQuestionHistory(prev => [newQuestion, ...prev]);
 
-      // Reset incorrect attempts on successful solution
+      // Reset incorrect attempts when a new solution is generated
       setIncorrectAttempts(0);
 
       // Check for achievements after question completion
@@ -356,6 +356,62 @@ function AppContent() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleIncorrectAttempt = () => {
+    const newAttempts = incorrectAttempts + 1;
+    setIncorrectAttempts(newAttempts);
+    
+    // Play sound for incorrect attempt
+    playSound('button');
+    
+    // After 2 incorrect attempts, show hint system
+    if (newAttempts >= 2) {
+      // Detect concept from question
+      const concept = detectConcept(currentQuestion);
+      setCurrentConcept(concept);
+    }
+  };
+
+  const detectConcept = (question: string): string => {
+    if (question.toLowerCase().includes('fraction')) return 'fractions';
+    if (question.toLowerCase().includes('percent')) return 'percentages';
+    if (question.toLowerCase().includes('algebra') || question.includes('equation') || question.includes('solve for x')) return 'algebra';
+    if (question.toLowerCase().includes('area') || question.includes('perimeter')) return 'measurement';
+    if (question.toLowerCase().includes('angle') || question.includes('triangle') || question.includes('rectangle')) return 'geometry';
+    if (question.toLowerCase().includes('mean') || question.includes('median') || question.includes('mode')) return 'statistics';
+    return 'mathematics';
+  };
+
+  const handleHintUsed = (level: number, helpful: boolean) => {
+    // Record hint usage
+    const questionId = Date.now().toString();
+    const subject = selectedSubject?.name || 'Mathematics';
+    const concept = currentConcept || detectConcept(currentQuestion);
+    
+    hintService.recordHintUsage(questionId, level, helpful, subject, concept);
+    
+    // Update hint usage history
+    setHintUsageHistory(hintService.getHintUsageHistory());
+    
+    // Play sound
+    playSound(helpful ? 'achievement' : 'button');
+  };
+
+  const handleExplainConcept = () => {
+    const concept = currentConcept || detectConcept(currentQuestion);
+    setCurrentConcept(concept);
+    setShowConceptExplainer(true);
+  };
+
+  const handleShowAlternative = () => {
+    setShowAlternativeSolution(true);
+  };
+
+  const handleShowWhy = () => {
+    const concept = currentConcept || detectConcept(currentQuestion);
+    setCurrentConcept(concept);
+    setShowWhyItWorks(true);
   };
 
   const checkForAchievements = (userProfile: UserProfile) => {
@@ -441,7 +497,7 @@ function AppContent() {
   const handleStreakMilestone = (days: number) => {
     const achievement = {
       name: days >= 30 ? 'Dedication Master' : 
-            days >= 14 ? 'Two Week Warrior'  :
+            days >= 14 ? 'Two Week Warrior' :
             days >= 7 ? 'Week Warrior' : 'Consistent Learner',
       description: `Maintained a ${days}-day learning streak`,
       icon: Flame,
@@ -454,57 +510,10 @@ function AppContent() {
     playSound('streak');
   };
 
-  const handleHintUsed = (level: number, helpful: boolean) => {
-    // Record hint usage for analytics
-    const newHintUsage: HintUsageData = {
-      level,
-      count: 1,
-      helpful: helpful ? 1 : 0,
-      subject: selectedSubject?.name || selectedMathStrand || 'mathematics',
-      timestamp: new Date()
-    };
-    
-    setHintUsageHistory(prev => [...prev, newHintUsage]);
-    
-    // Play sound if helpful
-    if (helpful) {
-      playSound('button');
-    }
-  };
-
-  const handleIncorrectAttempt = () => {
-    setIncorrectAttempts(prev => prev + 1);
-  };
-
-  const handleExplainConcept = () => {
-    // Extract concept from question
-    let concept = 'mathematics';
-    
-    if (currentQuestion.toLowerCase().includes('fraction')) {
-      concept = 'fractions';
-    } else if (currentQuestion.toLowerCase().includes('percent')) {
-      concept = 'percentages';
-    } else if (currentQuestion.toLowerCase().includes('algebra') || currentQuestion.includes('x =')) {
-      concept = 'algebra';
-    }
-    
-    setCurrentConcept(concept);
-    setShowConceptExplainer(true);
-  };
-
-  const handleShowAlternative = () => {
-    // This would show alternative solution methods
-    alert('Alternative solution method would be shown here');
-  };
-
-  const handleShowWhy = () => {
-    // This would explain the conceptual understanding
-    alert('Conceptual explanation would be shown here');
-  };
-
   const handleRecommendation = (topic: string, action: string) => {
-    // Handle recommendation from learning analytics
-    alert(`Recommendation for ${topic}: ${action}`);
+    // Implement recommendation action
+    console.log(`Recommendation for ${topic}: ${action}`);
+    // Could show a specific learning path or resources
   };
 
   const getRemainingQuestions = (): number => {
@@ -993,7 +1002,7 @@ function AppContent() {
               {currentQuestion && !isLoading && (
                 <SmartHintSystem
                   question={currentQuestion}
-                  subject={selectedSubject?.name || selectedMathStrand || 'mathematics'}
+                  subject={selectedSubject.name}
                   onHintUsed={handleHintUsed}
                   onExplainConcept={handleExplainConcept}
                   onShowAlternative={handleShowAlternative}
@@ -1094,15 +1103,56 @@ function AppContent() {
                     </div>
                   )}
 
-                  {/* Learning Analytics Button */}
-                  {user && hintUsageHistory.length > 0 && (
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => setShowLearningAnalytics(true)}
-                        className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                      >
-                        View Learning Analytics →
-                      </button>
+                  {/* Help Buttons */}
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button
+                      onClick={handleExplainConcept}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span>Explain This Concept</span>
+                    </button>
+                    <button
+                      onClick={handleShowAlternative}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>Show Me Another Way</span>
+                    </button>
+                    <button
+                      onClick={handleShowWhy}
+                      className="flex items-center space-x-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Why Does This Work?</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Learning Analytics Button */}
+              {user && hintUsageHistory.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <BarChart3 className="h-5 w-5 text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">Your Learning Patterns</h3>
+                    </div>
+                    <button
+                      onClick={() => setShowLearningAnalytics(!showLearningAnalytics)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {showLearningAnalytics ? 'Hide' : 'View'} Analytics
+                    </button>
+                  </div>
+                  
+                  {showLearningAnalytics && (
+                    <div className="mt-4">
+                      <LearningAnalytics
+                        userProfile={user}
+                        hintUsageHistory={hintUsageHistory}
+                        onRecommendation={handleRecommendation}
+                      />
                     </div>
                   )}
                 </div>
@@ -1358,40 +1408,27 @@ function AppContent() {
         }}
       />
 
-      {/* Learning Analytics Modal */}
-      {showLearningAnalytics && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Your Learning Analytics</h2>
-                <button
-                  onClick={() => setShowLearningAnalytics(false)}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <LearningAnalytics
-                userProfile={user!}
-                hintUsageHistory={hintUsageHistory}
-                onRecommendation={handleRecommendation}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Smart Hints & Help System Modals */}
+      <ConceptExplainer
+        isOpen={showConceptExplainer}
+        onClose={() => setShowConceptExplainer(false)}
+        concept={currentConcept}
+        subject={selectedSubject?.name || 'Mathematics'}
+      />
 
-      {/* Concept Explainer Modal */}
-      {showConceptExplainer && (
-        <ConceptExplainer
-          concept={currentConcept}
-          subject={selectedSubject?.name || selectedMathStrand || 'mathematics'}
-          onClose={() => setShowConceptExplainer(false)}
-        />
-      )}
+      <AlternativeSolutionModal
+        isOpen={showAlternativeSolution}
+        onClose={() => setShowAlternativeSolution(false)}
+        question={currentQuestion}
+        subject={selectedSubject?.name || 'Mathematics'}
+      />
+
+      <WhyItWorksModal
+        isOpen={showWhyItWorks}
+        onClose={() => setShowWhyItWorks(false)}
+        concept={currentConcept}
+        subject={selectedSubject?.name || 'Mathematics'}
+      />
 
       {user && (
         <>

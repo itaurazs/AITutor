@@ -42,28 +42,28 @@ export const SmartHintSystem: React.FC<SmartHintSystemProps> = ({
     const baseHints: HintLevel[] = [
       {
         level: 1,
-        title: 'Gentle Nudge',
+        title: "Gentle Nudge",
         content: getGentleNudge(),
         type: 'nudge',
         icon: Lightbulb
       },
       {
         level: 2,
-        title: 'Method Reminder',
+        title: "Method Reminder",
         content: getMethodReminder(),
         type: 'method',
         icon: Target
       },
       {
         level: 3,
-        title: 'Step-by-Step Guidance',
+        title: "Step-by-Step Guidance",
         content: getStepGuidance(),
         type: 'guidance',
         icon: ArrowRight
       },
       {
         level: 4,
-        title: 'Worked Example',
+        title: "Worked Example",
         content: getWorkedExample(),
         type: 'example',
         icon: BookOpen
