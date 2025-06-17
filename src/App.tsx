@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3 } from 'lucide-react';
+import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3, UserPlus } from 'lucide-react';
 import { subjects } from './data/subjects';
 import { year7MathStrands } from './data/mathStrands';
 import { Subject, Question, Step } from './types/Subject';
@@ -23,13 +23,16 @@ import { GamificationBadges } from './components/GamificationBadges';
 import { EducationalResources } from './components/EducationalResources';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { ProgressTracker } from './components/ProgressTracker';
-import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
-import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
+import { AssessmentQuiz, AssessmentResults as AssessmentResultsType } from './components/AssessmentQuiz';
+import { AssessmentResults } from './components/AssessmentResults';
 import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
 import { StreakTracker } from './components/StreakTracker';
 import { CelebrationModal } from './components/CelebrationModal';
 import { BadgesPage } from './components/BadgesPage';
 import { SoundProvider, SoundToggle, useSounds } from './components/SoundManager';
+import { ParentSignup } from './components/ParentSignup';
+import { ParentDashboard } from './components/ParentDashboard';
+import { ParentControls } from './components/ParentControls';
 
 type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
 
@@ -62,7 +65,7 @@ function AppContent() {
   // Assessment and Onboarding
   const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
   const [showAssessmentResults, setShowAssessmentResults] = useState(false);
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResultsType | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Gamification
@@ -70,10 +73,15 @@ function AppContent() {
   const [celebrationAchievement, setCelebrationAchievement] = useState<any>(null);
   const [showBadgesPage, setShowBadgesPage] = useState(false);
 
+  // Parent Features
+  const [showParentSignup, setShowParentSignup] = useState(false);
+  const [showParentDashboard, setShowParentDashboard] = useState(false);
+  const [showParentControls, setShowParentControls] = useState(false);
+
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
 
-  // Sound context
+  // Sound system
   const { playSound } = useSounds();
 
   // Check if device is mobile
@@ -289,7 +297,6 @@ function AppContent() {
         const updatedProfile = authService.getUserProfile();
         if (updatedProfile) {
           setUser(updatedProfile);
-          checkForNewAchievements(updatedProfile);
         }
       } else {
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -314,6 +321,11 @@ function AppContent() {
       };
       
       setQuestionHistory(prev => [newQuestion, ...prev]);
+
+      // Check for achievements after question completion
+      if (user) {
+        checkForAchievements(user);
+      }
     } catch (error) {
       console.error('Error generating solution:', error);
       const subjectId = selectedSubject?.id || selectedMathStrand || 'year7-mathematics';
@@ -325,54 +337,30 @@ function AppContent() {
     }
   };
 
-  const checkForNewAchievements = (userProfile: UserProfile) => {
-    // Check for milestone achievements
+  const checkForAchievements = (userProfile: UserProfile) => {
     const totalQuestions = userProfile.progress.totalQuestions;
     const streakDays = userProfile.progress.streakDays;
     
-    // Check for question milestones
-    if (totalQuestions === 1) {
-      showAchievementCelebration({
-        name: 'Getting Started',
-        description: 'Asked your first question',
-        icon: Target,
-        rarity: 'common',
-        type: 'badge'
-      });
-    } else if (totalQuestions === 10) {
-      showAchievementCelebration({
-        name: 'Curious Mind',
-        description: 'Asked 10 questions',
-        icon: Brain,
-        rarity: 'common',
-        type: 'badge'
-      });
-    } else if (totalQuestions === 50) {
-      showAchievementCelebration({
-        name: 'Knowledge Seeker',
-        description: 'Asked 50 questions',
-        icon: Target,
-        rarity: 'rare',
-        type: 'badge'
-      });
-    }
+    // Check for milestone achievements
+    const milestones = [1, 10, 25, 50, 100];
+    const justReached = milestones.find(m => totalQuestions === m);
     
-    // Check for streak milestones
-    if (streakDays === 3 || streakDays === 7 || streakDays === 14 || streakDays === 30) {
-      showAchievementCelebration({
-        name: `${streakDays} Day Streak`,
-        description: `Maintained a ${streakDays}-day learning streak`,
-        icon: Flame,
-        rarity: streakDays >= 30 ? 'legendary' : streakDays >= 14 ? 'epic' : 'rare',
-        type: 'streak'
-      });
+    if (justReached) {
+      const achievement = {
+        name: justReached === 1 ? 'Getting Started' : 
+              justReached === 10 ? 'Curious Mind' :
+              justReached === 25 ? 'Half Way Hero' :
+              justReached === 50 ? 'Knowledge Seeker' : 'Year 7 Graduate',
+        description: `Completed ${justReached} question${justReached > 1 ? 's' : ''}`,
+        icon: justReached === 100 ? Target : CheckCircle,
+        rarity: justReached >= 50 ? 'epic' : justReached >= 25 ? 'rare' : 'common',
+        type: 'milestone'
+      };
+      
+      setCelebrationAchievement(achievement);
+      setShowCelebration(true);
+      playSound('achievement');
     }
-  };
-
-  const showAchievementCelebration = (achievement: any) => {
-    setCelebrationAchievement(achievement);
-    setShowCelebration(true);
-    playSound('achievement');
   };
 
   const handleSampleQuestion = (question: string) => {
@@ -413,7 +401,7 @@ function AppContent() {
     setShowUserProfile(false);
   };
 
-  const handleAssessmentComplete = (results: AssessmentResults) => {
+  const handleAssessmentComplete = (results: AssessmentResultsType) => {
     setAssessmentResults(results);
     setShowAssessmentQuiz(false);
     setShowAssessmentResults(true);
@@ -423,32 +411,26 @@ function AppContent() {
     setShowOnboarding(false);
     if (preferences.hasAccount) {
       setShowAuthModal(true);
-    }
-    // Store preferences in localStorage or user profile
-    localStorage.setItem('userPreferences', JSON.stringify(preferences));
-  };
-
-  const handleStartLearning = (strand: string) => {
-    setShowAssessmentResults(false);
-    const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
-    if (mathSubject) {
-      setSelectedSubject(mathSubject);
-      // Find the strand and select it
-      const strandData = year7MathStrands.find(s => s.name === strand);
-      if (strandData) {
-        setSelectedMathStrand(strandData.id);
-      }
+    } else {
+      // Continue as guest
+      console.log('User preferences:', preferences);
     }
   };
 
   const handleStreakMilestone = (days: number) => {
-    showAchievementCelebration({
-      name: `${days} Day Streak!`,
+    const achievement = {
+      name: days >= 30 ? 'Dedication Master' : 
+            days >= 14 ? 'Two Week Warrior' :
+            days >= 7 ? 'Week Warrior' : 'Consistent Learner',
       description: `Maintained a ${days}-day learning streak`,
       icon: Flame,
-      rarity: days >= 30 ? 'legendary' : days >= 14 ? 'epic' : 'rare',
+      rarity: days >= 30 ? 'legendary' : days >= 7 ? 'rare' : 'common',
       type: 'streak'
-    });
+    };
+    
+    setCelebrationAchievement(achievement);
+    setShowCelebration(true);
+    playSound('streak');
   };
 
   const getRemainingQuestions = (): number => {
@@ -539,12 +521,6 @@ function AppContent() {
               {/* User Authentication - Mobile Optimized */}
               {user ? (
                 <div className="flex items-center space-x-2">
-                  {/* Streak Display */}
-                  <div className="flex items-center space-x-1 px-2 py-1 bg-orange-50 rounded-lg border border-orange-200">
-                    <span className="text-lg">{getStreakEmoji(user.progress.streakDays)}</span>
-                    <span className="text-sm font-bold text-orange-900">{user.progress.streakDays}</span>
-                  </div>
-
                   <button
                     onClick={() => setShowUserProfile(true)}
                     className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
@@ -563,15 +539,36 @@ function AppContent() {
                       {user.tier}
                     </div>
                   </button>
+                  
+                  {/* Parent Dashboard Button */}
+                  <button
+                    onClick={() => setShowParentDashboard(true)}
+                    className="flex items-center space-x-1 px-2 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 touch-manipulation"
+                    title="Parent Dashboard"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span className="hidden sm:inline text-sm">Parent</span>
+                  </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
-                >
-                  <LogIn className="h-4 w-4" />
-                  <span className="text-sm">Sign In</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span className="text-sm">Sign In</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowParentSignup(true)}
+                    className="flex items-center space-x-1 px-2 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors touch-manipulation"
+                    title="Parent Account"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span className="hidden sm:inline text-sm">Parent</span>
+                  </button>
+                </div>
               )}
               
               {/* Progress Dashboard Button */}
@@ -582,17 +579,6 @@ function AppContent() {
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span className="hidden sm:inline text-sm">Progress</span>
-                </button>
-              )}
-
-              {/* Badges Button */}
-              {user && (
-                <button
-                  onClick={() => setShowBadgesPage(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-700 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-colors border border-yellow-200 touch-manipulation"
-                >
-                  <Target className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">Badges</span>
                 </button>
               )}
               
@@ -666,17 +652,17 @@ function AppContent() {
               </div>
             </div>
 
-            {/* Streak Tracker for Mathematics */}
+            {/* Progress Tracker for Mathematics */}
+            {user && (
+              <ProgressTracker userProfile={user} />
+            )}
+
+            {/* Streak Tracker */}
             {user && (
               <StreakTracker 
                 userProfile={user} 
                 onStreakMilestone={handleStreakMilestone}
               />
-            )}
-
-            {/* Progress Tracker for Mathematics */}
-            {user && (
-              <ProgressTracker userProfile={user} />
             )}
 
             {/* Math Strands Grid - Mobile Optimized */}
@@ -806,22 +792,21 @@ function AppContent() {
                 </div>
               </div>
 
-              {/* Assessment Quiz CTA */}
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 sm:p-6 border border-green-200 mb-6">
-                <div className="text-center">
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                    Find Your Year 7 Maths Starting Point
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 mb-4">
-                    Take our 2-minute diagnostic quiz to get personalized recommendations
-                  </p>
-                  <button
-                    onClick={() => setShowAssessmentQuiz(true)}
-                    className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl touch-manipulation"
-                  >
-                    Take Free Assessment Quiz (2 min)
-                  </button>
-                </div>
+              {/* Assessment and Onboarding Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+                <button
+                  onClick={() => setShowAssessmentQuiz(true)}
+                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
+                >
+                  Take Free Assessment Quiz (2 minutes)
+                </button>
+                
+                <button
+                  onClick={() => setShowOnboarding(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
+                >
+                  Quick Setup (30 seconds)
+                </button>
               </div>
 
               {/* CTA Button - Mobile Optimized */}
@@ -1205,11 +1190,14 @@ function AppContent() {
         onComplete={handleAssessmentComplete}
       />
 
-      <AssessmentResultsModal
+      <AssessmentResults
         isOpen={showAssessmentResults}
         onClose={() => setShowAssessmentResults(false)}
         results={assessmentResults!}
-        onStartLearning={handleStartLearning}
+        onStartLearning={(strand) => {
+          setShowAssessmentResults(false);
+          handleSubjectSelect(subjects.find(s => s.id === 'year7-mathematics')!);
+        }}
         onCreateAccount={() => {
           setShowAssessmentResults(false);
           setShowAuthModal(true);
@@ -1227,12 +1215,47 @@ function AppContent() {
         onClose={() => setShowCelebration(false)}
         achievement={celebrationAchievement}
         onShare={() => {
-          // Implement sharing functionality
+          // Share achievement functionality
           console.log('Sharing achievement:', celebrationAchievement);
         }}
         onDownloadCertificate={() => {
-          // Implement certificate download
+          // Download certificate functionality
           console.log('Downloading certificate for:', celebrationAchievement);
+        }}
+      />
+
+      <ParentSignup
+        isOpen={showParentSignup}
+        onClose={() => setShowParentSignup(false)}
+        onSuccess={() => {
+          setShowParentSignup(false);
+          setShowParentDashboard(true);
+        }}
+      />
+
+      <ParentDashboard
+        isOpen={showParentDashboard}
+        onClose={() => setShowParentDashboard(false)}
+        parentProfile={user || {} as UserProfile}
+      />
+
+      <ParentControls
+        isOpen={showParentControls}
+        onClose={() => setShowParentControls(false)}
+        childName="Sarah Chen"
+        currentSettings={{
+          dailyGoal: 5,
+          weeklyGoal: 25,
+          difficultyLevel: 'adaptive',
+          emailNotifications: true,
+          weeklyReports: true,
+          achievementAlerts: true,
+          concernAlerts: true,
+          studyTimeLimit: 60,
+          allowedSubjects: ['Number', 'Algebra', 'Measurement', 'Space & Geometry', 'Statistics', 'Probability']
+        }}
+        onSave={(settings) => {
+          console.log('Saving parent controls:', settings);
         }}
       />
 
