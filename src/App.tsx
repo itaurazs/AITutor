@@ -1,442 +1,251 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, History, Send, ArrowRight, CheckCircle, Brain, Target, Zap, Users, Wifi, Settings, AlertCircle, User, LogIn, Flame, BarChart3 } from 'lucide-react';
-import { subjects } from './data/subjects';
-import { year7MathStrands } from './data/mathStrands';
-import { Subject, Question, Step } from './types/Subject';
-import { generateStepByStepSolution } from './utils/solutionGenerator';
-import { aiService } from './services/aiService';
-import authService, { UserProfile } from './services/authService';
+import { Calculator, Atom, BookOpen, Scroll, Globe, TrendingUp, GraduationCap, User, Settings, History, Menu, X, HelpCircle, MessageCircle, Info, Star, AlertTriangle, CheckCircle, Target, Award } from 'lucide-react';
 import { SubjectCard } from './components/SubjectCard';
 import { SampleQuestions } from './components/SampleQuestions';
+import { subjects } from './data/subjects';
+import { Subject, Question } from './types/Subject';
+import { aiService } from './services/aiService';
+import { generateStepByStepSolution } from './utils/solutionGenerator';
+import authService, { UserProfile } from './services/authService';
 import { AuthModal } from './components/AuthModal';
-import { SubscriptionModal } from './components/SubscriptionModal';
-import { UserProfile as UserProfileModal } from './components/UserProfile';
-import { Footer } from './components/Footer';
-import { ContactPage } from './components/ContactPage';
+import { UserProfile as UserProfileComponent } from './components/UserProfile';
+import { ProgressDashboard } from './components/ProgressDashboard';
 import { AboutPage } from './components/AboutPage';
+import { ContactPage } from './components/ContactPage';
 import { FAQPage } from './components/FAQPage';
 import { TestimonialsPage } from './components/TestimonialsPage';
-import { ComingSoonModal } from './components/ComingSoonModal';
-import { MathStrandCard } from './components/MathStrandCard';
-import { MathStrandDetail } from './components/MathStrandDetail';
-import { GamificationBadges } from './components/GamificationBadges';
-import { EducationalResources } from './components/EducationalResources';
-import { ProgressDashboard } from './components/ProgressDashboard';
-import { ProgressTracker } from './components/ProgressTracker';
-import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
-import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
-import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
-import { StreakTracker } from './components/StreakTracker';
-import { CelebrationModal } from './components/CelebrationModal';
-import { BadgesPage } from './components/BadgesPage';
-import { ParentSignup } from './components/ParentSignup';
-import { ParentDashboard } from './components/ParentDashboard';
-import { ParentControls } from './components/ParentControls';
-import { SmartHintSystem } from './components/SmartHintSystem';
+import { Footer } from './components/Footer';
+import { MobileNavigation } from './components/MobileNavigation';
 import { ConceptExplainer } from './components/ConceptExplainer';
 import { AlternativeSolutionModal } from './components/AlternativeSolutionModal';
 import { WhyItWorksModal } from './components/WhyItWorksModal';
+import { SmartHintSystem } from './components/SmartHintSystem';
+import { AssessmentQuiz, AssessmentResults } from './components/AssessmentQuiz';
+import { AssessmentResults as AssessmentResultsModal } from './components/AssessmentResults';
+import { OnboardingFlow, UserPreferences } from './components/OnboardingFlow';
 import { hintService } from './services/hintService';
-
-type CurrentPage = 'home' | 'contact' | 'about' | 'faq' | 'testimonials';
+import { year7MathStrands } from './data/mathStrands';
+import { MathStrandCard } from './components/MathStrandCard';
+import { MathStrandDetail } from './components/MathStrandDetail';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<CurrentPage>('home');
+  // Core state
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [selectedMathStrand, setSelectedMathStrand] = useState<string | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [question, setQuestion] = useState('');
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentSteps, setCurrentSteps] = useState<Step[]>([]);
-  const [currentKeyPoints, setCurrentKeyPoints] = useState<string[]>([]);
+  const [error, setError] = useState('');
   const [questionHistory, setQuestionHistory] = useState<Question[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [visitorCount, setVisitorCount] = useState(0);
-  const [onlineVisitors, setOnlineVisitors] = useState(1);
+  const [aiServiceAvailable, setAiServiceAvailable] = useState<boolean | null>(null);
   
-  // Authentication and user management
-  const [user, setUser] = useState<UserProfile | null>(null);
+  // UI state
+  const [currentView, setCurrentView] = useState<'home' | 'mathematics' | 'history' | 'profile' | 'progress' | 'about' | 'contact' | 'faq' | 'testimonials' | 'settings'>('home');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [selectedStrand, setSelectedStrand] = useState<string | null>(null);
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
+  
+  // Modal states
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showProgressDashboard, setShowProgressDashboard] = useState(false);
-  const [useAI, setUseAI] = useState(false);
-  const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-
-  // Coming Soon Modal
-  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
-  const [comingSoonSubject, setComingSoonSubject] = useState<Subject | null>(null);
-
-  // Assessment and Onboarding
-  const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
-  const [showAssessmentResults, setShowAssessmentResults] = useState(false);
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // Gamification
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [celebrationAchievement, setCelebrationAchievement] = useState<any>(null);
-  const [showBadgesPage, setShowBadgesPage] = useState(false);
-
-  // Parent Features
-  const [showParentSignup, setShowParentSignup] = useState(false);
-  const [showParentDashboard, setShowParentDashboard] = useState(false);
-  const [showParentControls, setShowParentControls] = useState(false);
-
-  // Smart Hints System
   const [showConceptExplainer, setShowConceptExplainer] = useState(false);
   const [showAlternativeSolution, setShowAlternativeSolution] = useState(false);
   const [showWhyItWorks, setShowWhyItWorks] = useState(false);
-  const [currentConcept, setCurrentConcept] = useState('');
+  const [showAssessmentQuiz, setShowAssessmentQuiz] = useState(false);
+  const [showAssessmentResults, setShowAssessmentResults] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResults | null>(null);
+  
+  // User state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Mobile responsive state
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if device is mobile
+  // Check AI service availability on mount
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Initialize auth state
-  useEffect(() => {
-    const initAuth = async () => {
-      const currentUser = authService.getCurrentUser();
-      const userProfile = authService.getUserProfile();
-      
-      if (currentUser && userProfile) {
-        setUser(userProfile);
-      }
-    };
-
-    initAuth();
-
-    // Check AI connection
-    const checkAIConnection = async () => {
+    const checkAIService = async () => {
       try {
-        const isConnected = await aiService.testConnection();
-        setAiConnectionStatus(isConnected ? 'connected' : 'disconnected');
-      } catch {
-        setAiConnectionStatus('disconnected');
+        const isAvailable = await aiService.testConnection();
+        setAiServiceAvailable(isAvailable);
+      } catch (error) {
+        setAiServiceAvailable(false);
       }
     };
 
-    checkAIConnection();
+    checkAIService();
   }, []);
 
-  // Track visitors and online status
+  // Load user profile and question history on mount
   useEffect(() => {
-    const initializeVisitorCount = () => {
-      const storedCount = localStorage.getItem('totalVisitorCount');
-      const lastUpdate = localStorage.getItem('lastVisitorUpdate');
-      const now = Date.now();
-      
-      if (!storedCount) {
-        const baseCount = Math.floor(Math.random() * 500) + 100;
-        localStorage.setItem('totalVisitorCount', baseCount.toString());
-        localStorage.setItem('lastVisitorUpdate', now.toString());
-        return baseCount;
+    const checkAuthState = async () => {
+      if (authService.isAuthenticated()) {
+        setIsAuthenticated(true);
+        const profile = authService.getUserProfile();
+        setUserProfile(profile);
       }
-      
-      const currentCount = parseInt(storedCount);
-      const timeSinceUpdate = now - parseInt(lastUpdate || '0');
-      const hoursElapsed = timeSinceUpdate / (1000 * 60 * 60);
-      
-      if (hoursElapsed > 0.1) {
-        const newVisitors = Math.floor(Math.random() * Math.max(1, hoursElapsed * 3)) + 1;
-        const newCount = currentCount + newVisitors;
-        localStorage.setItem('totalVisitorCount', newCount.toString());
-        localStorage.setItem('lastVisitorUpdate', now.toString());
-        return newCount;
+    };
+
+    checkAuthState();
+
+    // Load question history from localStorage
+    const savedHistory = localStorage.getItem('questionHistory');
+    if (savedHistory) {
+      try {
+        const history = JSON.parse(savedHistory);
+        setQuestionHistory(history.map((q: any) => ({
+          ...q,
+          timestamp: new Date(q.timestamp)
+        })));
+      } catch (error) {
+        console.error('Error loading question history:', error);
       }
-      
-      return currentCount;
-    };
+    }
 
-    const totalCount = initializeVisitorCount();
-    setVisitorCount(totalCount);
+    // Check if user has completed onboarding
+    const completedOnboarding = localStorage.getItem('hasCompletedOnboarding');
+    setHasCompletedOnboarding(!!completedOnboarding);
 
-    const visitorInterval = setInterval(() => {
-      const currentCount = parseInt(localStorage.getItem('totalVisitorCount') || '0');
-      const shouldAddVisitor = Math.random() < 0.3;
-      
-      if (shouldAddVisitor) {
-        const newCount = currentCount + Math.floor(Math.random() * 3) + 1;
-        localStorage.setItem('totalVisitorCount', newCount.toString());
-        localStorage.setItem('lastVisitorUpdate', Date.now().toString());
-        setVisitorCount(newCount);
-      }
-    }, 45000);
-
-    const updateOnlineCount = () => {
-      const totalVisitors = parseInt(localStorage.getItem('totalVisitorCount') || '100');
-      const basePercentage = 0.02 + (Math.random() * 0.06);
-      const baseOnline = Math.max(1, Math.floor(totalVisitors * basePercentage));
-      const hour = new Date().getHours();
-      const peakHours = hour >= 15 && hour <= 21;
-      const peakMultiplier = peakHours ? 1.2 + (Math.random() * 0.5) : 0.8 + (Math.random() * 0.4);
-      const finalOnlineCount = Math.max(1, Math.floor(baseOnline * peakMultiplier));
-      setOnlineVisitors(finalOnlineCount);
-    };
-
-    updateOnlineCount();
-    const onlineInterval = setInterval(updateOnlineCount, 20000 + Math.random() * 20000);
-
-    const markActive = () => {
-      localStorage.setItem('lastActive', Date.now().toString());
-    };
-
-    markActive();
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    activityEvents.forEach(event => {
-      document.addEventListener(event, markActive, { passive: true });
-    });
-
-    return () => {
-      clearInterval(visitorInterval);
-      clearInterval(onlineInterval);
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, markActive);
-      });
-    };
+    // Show quick setup for new users
+    const hasSeenQuickSetup = localStorage.getItem('hasSeenQuickSetup');
+    if (!hasSeenQuickSetup && !completedOnboarding) {
+      setShowQuickSetup(true);
+    }
   }, []);
 
-  const handleNavigate = (page: CurrentPage) => {
-    setCurrentPage(page);
-    setSelectedSubject(null);
-    setSelectedMathStrand(null);
-    setCurrentSteps([]);
-    setCurrentKeyPoints([]);
-    setCurrentQuestion('');
-    
-    // Scroll to top of the page
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Save question history to localStorage whenever it changes
+  useEffect(() => {
+    if (questionHistory.length > 0) {
+      localStorage.setItem('questionHistory', JSON.stringify(questionHistory));
+    }
+  }, [questionHistory]);
 
   const handleSubjectSelect = (subject: Subject) => {
-    if (!subject.available) {
-      setComingSoonSubject(subject);
-      setShowComingSoonModal(true);
+    if (!subject.available) return;
+    
+    if (subject.id === 'year7-mathematics') {
+      setCurrentView('mathematics');
+      setSelectedSubject(subject);
+    } else {
+      setSelectedSubject(subject);
+    }
+  };
+
+  const handleStrandSelect = (strandId: string) => {
+    setSelectedStrand(strandId);
+  };
+
+  const handleBackToMathematics = () => {
+    setSelectedStrand(null);
+  };
+
+  const handleQuestionSubmit = async () => {
+    if (!question.trim()) return;
+    if (!selectedSubject) {
+      setError('Please select a subject first');
       return;
     }
 
-    setSelectedSubject(subject);
-    setSelectedMathStrand(null);
-    setCurrentSteps([]);
-    setCurrentKeyPoints([]);
-    setCurrentQuestion('');
-    
-    // Scroll to top smoothly for better mobile experience
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleMathStrandSelect = (strandId: string) => {
-    setSelectedMathStrand(strandId);
-    setCurrentSteps([]);
-    setCurrentKeyPoints([]);
-    setCurrentQuestion('');
-    
-    // Scroll to top smoothly
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleBackToMathOverview = () => {
-    setSelectedMathStrand(null);
-    // Scroll to top smoothly
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const canMakeAIRequest = (): { allowed: boolean; reason?: string } => {
-    if (!user) {
-      return { allowed: false, reason: 'Please sign in to use AI features' };
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const dailyCount = user.usage.daily.date === today ? user.usage.daily.count : 0;
-
-    let dailyLimit: number;
-    switch (user.tier) {
-      case 'premium':
-        dailyLimit = 50;
-        break;
-      case 'unlimited':
-        dailyLimit = Infinity;
-        break;
-      default:
-        dailyLimit = 5;
-    }
-
-    if (dailyCount >= dailyLimit) {
-      return { allowed: false, reason: `Daily limit of ${dailyLimit} AI questions reached` };
-    }
-
-    return { allowed: true };
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentQuestion.trim() || (!selectedSubject && !selectedMathStrand)) return;
-
-    if (useAI && aiConnectionStatus === 'connected') {
-      const canUse = canMakeAIRequest();
-      if (!canUse.allowed) {
-        alert(canUse.reason);
-        return;
-      }
-    }
-
     setIsLoading(true);
-    
+    setError('');
+
     try {
-      let solution;
-      const subjectForAI = selectedSubject || { 
-        id: selectedMathStrand || 'year7-mathematics', 
-        name: 'Year 7 Mathematics' 
-      };
-      
-      if (useAI && aiConnectionStatus === 'connected' && user) {
-        solution = await aiService.generateSolution(currentQuestion, subjectForAI as Subject);
-        await authService.recordAIUsage(subjectForAI.id);
+      // Record AI usage if user is authenticated
+      if (isAuthenticated && userProfile) {
+        await authService.recordAIUsage(selectedSubject.id);
+        // Refresh user profile to get updated usage stats
         const updatedProfile = authService.getUserProfile();
-        if (updatedProfile) {
-          setUser(updatedProfile);
+        setUserProfile(updatedProfile);
+      }
+
+      // Try AI service first, fallback to local generation
+      let response;
+      let usedAI = false;
+      
+      try {
+        if (aiServiceAvailable) {
+          response = await aiService.generateSolution(question, selectedSubject);
+          usedAI = true;
+        } else {
+          throw new Error('AI service not available');
         }
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const localSolution = generateStepByStepSolution(currentQuestion, subjectForAI.id);
-        solution = {
+      } catch (aiError) {
+        console.warn('AI service failed, using local generation:', aiError);
+        const localSolution = generateStepByStepSolution(question, selectedSubject.id);
+        response = {
           steps: localSolution.steps,
           keyPoints: localSolution.keyPoints,
-          explanation: 'Generated using local algorithms'
+          explanation: `Here's a step-by-step solution for your ${selectedSubject.name} question.`
         };
+        usedAI = false;
       }
-      
-      setCurrentSteps(solution.steps);
-      setCurrentKeyPoints(solution.keyPoints);
-      
+
       const newQuestion: Question = {
         id: Date.now().toString(),
-        question: currentQuestion,
-        subject: subjectForAI.name,
-        steps: solution.steps,
-        keyPoints: solution.keyPoints,
-        timestamp: new Date(),
+        question,
+        subject: selectedSubject.name,
+        steps: response.steps,
+        keyPoints: response.keyPoints,
+        timestamp: new Date()
       };
-      
-      setQuestionHistory(prev => [newQuestion, ...prev]);
+
+      setCurrentQuestion(newQuestion);
+      setQuestionHistory(prev => [newQuestion, ...prev.slice(0, 49)]); // Keep last 50 questions
+      setQuestion('');
+
+      // Show notification if using local solutions
+      if (!usedAI) {
+        setError('AI service unavailable - using local solutions');
+        setTimeout(() => setError(''), 5000);
+      }
     } catch (error) {
       console.error('Error generating solution:', error);
-      const subjectId = selectedSubject?.id || selectedMathStrand || 'year7-mathematics';
-      const localSolution = generateStepByStepSolution(currentQuestion, subjectId);
-      setCurrentSteps(localSolution.steps);
-      setCurrentKeyPoints(localSolution.keyPoints);
+      setError(error instanceof Error ? error.message : 'Failed to generate solution. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSampleQuestion = (question: string) => {
-    setCurrentQuestion(question);
-    setCurrentSteps([]);
-    setCurrentKeyPoints([]);
-  };
-
-  const loadFromHistory = (item: Question) => {
-    setCurrentQuestion(item.question);
-    setCurrentSteps(item.steps);
-    setCurrentKeyPoints(item.keyPoints);
-    const subject = subjects.find(s => s.name === item.subject);
-    if (subject) {
-      setSelectedSubject(subject);
-    }
+  const handleQuestionSelect = (selectedQuestion: string) => {
+    setQuestion(selectedQuestion);
   };
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    const userProfile = authService.getUserProfile();
-    if (userProfile) {
-      setUser(userProfile);
-    }
-  };
-
-  const handleSubscriptionSuccess = () => {
-    setShowSubscriptionModal(false);
-    const userProfile = authService.getUserProfile();
-    if (userProfile) {
-      setUser(userProfile);
-    }
+    setIsAuthenticated(true);
+    const profile = authService.getUserProfile();
+    setUserProfile(profile);
   };
 
   const handleSignOut = async () => {
-    await authService.signOut();
-    setUser(null);
-    setShowUserProfile(false);
-  };
-
-  // Assessment handlers
-  const handleAssessmentComplete = (results: AssessmentResults) => {
-    setAssessmentResults(results);
-    setShowAssessmentQuiz(false);
-    setShowAssessmentResults(true);
-  };
-
-  const handleStartLearning = (strand: string) => {
-    setShowAssessmentResults(false);
-    const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
-    if (mathSubject) {
-      setSelectedSubject(mathSubject);
-      // Find the strand and select it
-      const strandData = year7MathStrands.find(s => s.name.toLowerCase().includes(strand.toLowerCase()));
-      if (strandData) {
-        setSelectedMathStrand(strandData.id);
-      }
+    try {
+      await authService.signOut();
+      setIsAuthenticated(false);
+      setUserProfile(null);
+      setShowUserProfile(false);
+      setCurrentView('home');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  const handleCreateAccount = () => {
-    setShowAssessmentResults(false);
-    setShowAuthModal(true);
+  const handleNavigate = (page: string) => {
+    setCurrentView(page as any);
+    setShowMobileMenu(false);
   };
 
-  // Onboarding handlers
-  const handleOnboardingComplete = (preferences: UserPreferences) => {
-    setShowOnboarding(false);
-    if (preferences.hasAccount) {
-      setShowAuthModal(true);
-    } else {
-      // Continue as guest
-      const mathSubject = subjects.find(s => s.id === 'year7-mathematics');
-      if (mathSubject) {
-        setSelectedSubject(mathSubject);
-      }
-    }
-  };
-
-  // Smart Hints handlers
   const handleHintUsed = (level: number, helpful: boolean) => {
-    const subjectName = selectedSubject?.name || 'Mathematics';
-    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
-                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
-                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
-    
-    hintService.recordHintUsage(
-      Date.now().toString(),
-      level,
-      helpful,
-      subjectName,
-      concept
-    );
+    if (currentQuestion) {
+      hintService.recordHintUsage(
+        currentQuestion.id,
+        level,
+        helpful,
+        selectedSubject?.name || 'unknown',
+        'general' // This could be more specific based on the question content
+      );
+    }
   };
 
   const handleExplainConcept = () => {
-    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
-                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
-                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
-    setCurrentConcept(concept);
     setShowConceptExplainer(true);
   };
 
@@ -445,763 +254,623 @@ function App() {
   };
 
   const handleShowWhy = () => {
-    const concept = currentQuestion.toLowerCase().includes('fraction') ? 'fractions' :
-                   currentQuestion.toLowerCase().includes('percentage') ? 'percentages' :
-                   currentQuestion.toLowerCase().includes('algebra') ? 'algebra' : 'general';
-    setCurrentConcept(concept);
     setShowWhyItWorks(true);
   };
 
-  const getRemainingQuestions = (): number => {
-    if (!user) return 0;
-    
-    const today = new Date().toISOString().split('T')[0];
-    const dailyCount = user.usage.daily.date === today ? user.usage.daily.count : 0;
-    
-    let dailyLimit: number;
-    switch (user.tier) {
-      case 'premium':
-        dailyLimit = 50;
-        break;
-      case 'unlimited':
-        return Infinity;
-      default:
-        dailyLimit = 5;
+  const handleStartAssessment = () => {
+    setShowAssessmentQuiz(true);
+  };
+
+  const handleAssessmentComplete = (results: AssessmentResults) => {
+    setAssessmentResults(results);
+    setShowAssessmentQuiz(false);
+    setShowAssessmentResults(true);
+  };
+
+  const handleStartLearning = (strand: string) => {
+    setShowAssessmentResults(false);
+    setCurrentView('mathematics');
+    setSelectedSubject(subjects.find(s => s.id === 'year7-mathematics')!);
+    // Find and select the recommended strand
+    const strandData = year7MathStrands.find(s => s.name.toLowerCase().includes(strand.toLowerCase()));
+    if (strandData) {
+      setSelectedStrand(strandData.id);
     }
+  };
+
+  const handleCreateAccount = () => {
+    setShowAssessmentResults(false);
+    setShowAuthModal(true);
+  };
+
+  const handleOnboardingComplete = (preferences: UserPreferences) => {
+    setShowOnboarding(false);
+    setHasCompletedOnboarding(true);
+    localStorage.setItem('hasCompletedOnboarding', 'true');
     
-    return Math.max(0, dailyLimit - dailyCount);
+    // If user chose to create account, show auth modal
+    if (preferences.hasAccount) {
+      setShowAuthModal(true);
+    }
   };
 
-  const getStreakEmoji = (days: number) => {
-    if (days >= 30) return '🔥';
-    if (days >= 14) return '⚡';
-    if (days >= 7) return '🌟';
-    if (days >= 3) return '✨';
-    return '💫';
+  const handleQuickSetup = () => {
+    setShowQuickSetup(false);
+    localStorage.setItem('hasSeenQuickSetup', 'true');
+    setShowOnboarding(true);
   };
 
-  // Render different pages
-  if (currentPage === 'contact') {
-    return <ContactPage onBack={() => handleNavigate('home')} />;
+  const handleSkipQuickSetup = () => {
+    setShowQuickSetup(false);
+    localStorage.setItem('hasSeenQuickSetup', 'true');
+  };
+
+  // Close all modals function
+  const closeAllModals = () => {
+    setShowConceptExplainer(false);
+    setShowAlternativeSolution(false);
+    setShowWhyItWorks(false);
+    setShowAuthModal(false);
+    setShowUserProfile(false);
+    setShowProgressDashboard(false);
+    setShowAssessmentQuiz(false);
+    setShowAssessmentResults(false);
+    setShowOnboarding(false);
+  };
+
+  // Render different views
+  if (currentView === 'about') {
+    return <AboutPage onBack={() => setCurrentView('home')} />;
   }
 
-  if (currentPage === 'about') {
-    return <AboutPage onBack={() => handleNavigate('home')} />;
+  if (currentView === 'contact') {
+    return <ContactPage onBack={() => setCurrentView('home')} />;
   }
 
-  if (currentPage === 'faq') {
-    return <FAQPage onBack={() => handleNavigate('home')} />;
+  if (currentView === 'faq') {
+    return <FAQPage onBack={() => setCurrentView('home')} />;
   }
 
-  if (currentPage === 'testimonials') {
-    return <TestimonialsPage onBack={() => handleNavigate('home')} />;
+  if (currentView === 'testimonials') {
+    return <TestimonialsPage onBack={() => setCurrentView('home')} />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header - Mobile Optimized */}
-      <header className="bg-white shadow-sm border-b border-blue-100 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 sm:p-2 rounded-xl">
-                <GraduationCap className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Your AI Tutor
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Multi-subject learning companion for grades 7-12</p>
+      {/* AI Service Status Banner */}
+      {aiServiceAvailable === false && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm text-yellow-800 font-medium">
+              AI service unavailable - using local solutions
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Setup Banner */}
+      {showQuickSetup && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Target className="h-5 w-5" />
+              <div>
+                <span className="font-semibold">Quick Setup:</span>
+                <span className="ml-2">Get personalized learning recommendations in 2 minutes</span>
               </div>
             </div>
-
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* AI Toggle - Mobile Optimized */}
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <label className="flex items-center space-x-1 sm:space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useAI}
-                    onChange={(e) => setUseAI(e.target.checked)}
-                    disabled={aiConnectionStatus !== 'connected' || !user}
-                    className="rounded"
-                  />
-                  <span className="text-xs sm:text-sm text-gray-700 hidden sm:inline">Use AI</span>
-                </label>
-                <div className={`w-2 h-2 rounded-full ${
-                  aiConnectionStatus === 'connected' ? 'bg-green-500' : 
-                  aiConnectionStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></div>
-              </div>
-
-              {/* User Authentication - Mobile Optimized */}
-              {user ? (
-                <button
-                  onClick={() => setShowUserProfile(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200 touch-manipulation"
-                >
-                  <img
-                    src={user.avatar || '/avatars/avatar1.svg'}
-                    alt="Avatar"
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full"
-                  />
-                  <span className="hidden sm:inline text-sm">{user.displayName}</span>
-                  <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${
-                    user.tier === 'unlimited' ? 'bg-purple-100 text-purple-800' :
-                    user.tier === 'premium' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {user.tier}
-                  </div>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors touch-manipulation"
-                >
-                  <LogIn className="h-4 w-4" />
-                  <span className="text-sm">Sign In</span>
-                </button>
-              )}
-              
-              {/* Progress Dashboard Button */}
-              {user && (
-                <button
-                  onClick={() => setShowProgressDashboard(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gradient-to-r from-green-50 to-blue-50 text-green-700 rounded-lg hover:from-green-100 hover:to-blue-100 transition-colors border border-green-200 touch-manipulation"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">Progress</span>
-                </button>
-              )}
-              
-              {/* Visitor Counters - Mobile Optimized */}
-              <div className="hidden sm:flex items-center space-x-2">
-                <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 rounded-lg border border-emerald-200">
-                  <div className="relative">
-                    <Wifi className="h-4 w-4" />
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <span className="text-sm font-semibold">{onlineVisitors}</span>
-                  <span className="text-xs text-emerald-600">online</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg border border-blue-200">
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm font-semibold">{visitorCount.toLocaleString()}</span>
-                  <span className="text-xs text-blue-600">total</span>
-                </div>
-              </div>
-              
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation"
+                onClick={handleQuickSetup}
+                className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors font-semibold text-sm"
               >
-                <History className="h-4 w-4" />
-                <span className="hidden sm:inline text-sm">History</span>
+                Start Setup
+              </button>
+              <button
+                onClick={handleSkipQuickSetup}
+                className="text-blue-100 hover:text-white transition-colors text-sm"
+              >
+                Skip
               </button>
             </div>
           </div>
         </div>
-      </header>
+      )}
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 lg:px-8">
-        {/* Math Strand Detail View */}
-        {selectedMathStrand && (
-          <MathStrandDetail
-            strand={year7MathStrands.find(s => s.id === selectedMathStrand)!}
-            onBack={handleBackToMathOverview}
-            onQuestionSelect={handleSampleQuestion}
-          />
-        )}
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div 
+              className="flex items-center space-x-3 cursor-pointer"
+              onClick={() => {
+                setCurrentView('home');
+                setSelectedSubject(null);
+                setSelectedStrand(null);
+                closeAllModals();
+              }}
+            >
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
+                <GraduationCap className="h-8 w-8 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Your AI Tutor
+                </h1>
+                <p className="text-sm text-gray-600">Multi-subject learning companion</p>
+              </div>
+            </div>
 
-        {/* Year 7 Mathematics Overview */}
-        {selectedSubject && selectedSubject.id === 'year7-mathematics' && !selectedMathStrand && (
-          <div className="space-y-4 sm:space-y-8">
-            {/* Subject Header - Mobile Optimized */}
-            <div className={`${selectedSubject.bgColor} rounded-2xl shadow-sm border border-current p-4 sm:p-6`}>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                <div className="flex items-center space-x-3 sm:space-x-4">
-                  <div className="bg-white p-2 sm:p-3 rounded-xl">
-                    <div className={`h-6 w-6 sm:h-8 sm:w-8 ${selectedSubject.color}`}>
-                      {/* Icon will be rendered by SubjectCard component logic */}
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className={`text-xl sm:text-2xl font-bold ${selectedSubject.color}`}>
-                      {selectedSubject.name}
-                    </h2>
-                    <p className={`text-sm sm:text-base ${selectedSubject.color.replace('600', '700')}`}>
-                      {selectedSubject.description}
-                    </p>
-                  </div>
-                </div>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-6">
+              <button
+                onClick={() => setCurrentView('about')}
+                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <Info className="h-4 w-4" />
+                <span>About</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('faq')}
+                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span>FAQ</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('testimonials')}
+                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <Star className="h-4 w-4" />
+                <span>Reviews</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('contact')}
+                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Contact</span>
+              </button>
+            </nav>
+
+            {/* User Actions */}
+            <div className="flex items-center space-x-3">
+              {questionHistory.length > 0 && (
                 <button
-                  onClick={() => setSelectedSubject(null)}
-                  className={`px-3 sm:px-4 py-2 bg-white ${selectedSubject.color} rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base touch-manipulation`}
+                  onClick={() => setCurrentView('history')}
+                  className="hidden sm:flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
                 >
-                  Change Subject
+                  <History className="h-4 w-4" />
+                  <span>History</span>
+                </button>
+              )}
+
+              {isAuthenticated && userProfile ? (
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setShowProgressDashboard(true)}
+                    className="hidden sm:flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    <span>Progress</span>
+                  </button>
+                  <button
+                    onClick={() => setShowUserProfile(true)}
+                    className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  >
+                    <img
+                      src={userProfile.avatar || '/avatars/avatar1.svg'}
+                      alt="User Avatar"
+                      className="w-6 h-6 rounded-full"
+                    />
+                    <span className="hidden sm:inline">{userProfile.displayName}</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </button>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="md:hidden border-t border-gray-100 py-4">
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setCurrentView('about');
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Info className="h-4 w-4" />
+                  <span>About</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView('faq');
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span>FAQ</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentView('contact');
+                    setShowMobileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Contact</span>
                 </button>
               </div>
             </div>
+          )}
+        </div>
+      </header>
 
-            {/* Progress Tracker for Mathematics */}
-            {user && (
-              <ProgressTracker userProfile={user} />
-            )}
-
-            {/* Math Strands Grid - Mobile Optimized */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">Choose Your Mathematics Strand</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {year7MathStrands.map((strand) => (
-                  <MathStrandCard
-                    key={strand.id}
-                    strand={strand}
-                    onSelect={() => handleMathStrandSelect(strand.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Subject Selection */}
-        {!selectedSubject && (
-          <div className="space-y-6 sm:space-y-8">
-            {/* Welcome Section - Mobile Optimized */}
-            <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4 sm:p-8">
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="bg-gradient-to-r from-blue-100 to-purple-100 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Master Year 7 Mathematics with AI</h2>
-                <p className="text-sm sm:text-xl text-gray-600 max-w-3xl mx-auto">
-                  Australian Curriculum Aligned - Personalized tutoring for Australian students following Curriculum v9.0
-                </p>
-                
-                {/* AI Status Banner */}
-                {aiConnectionStatus !== 'connected' && (
-                  <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center justify-center space-x-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <span className="text-xs sm:text-sm text-yellow-800">
-                        {aiConnectionStatus === 'checking' 
-                          ? 'Checking AI connection...' 
-                          : 'AI service unavailable - using local solutions'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Authentication Prompt */}
-                {!user && (
-                  <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4 text-blue-600" />
-                        <span className="text-xs sm:text-sm text-blue-800">
-                          Sign in to unlock AI-powered explanations and track your progress
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setShowAuthModal(true)}
-                        className="text-blue-600 hover:text-blue-700 font-semibold text-xs sm:text-sm underline touch-manipulation"
-                      >
-                        Sign In
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* User Progress Display - Mobile Optimized */}
-                {user && (
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-3 sm:p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
-                        <div className="text-center">
-                          <div className="text-lg sm:text-xl font-bold text-orange-900 flex items-center justify-center">
-                            {getStreakEmoji(user.progress.streakDays)}
-                            <span className="ml-1">{user.progress.streakDays}</span>
-                          </div>
-                          <div className="text-xs sm:text-sm text-orange-700">Day Streak</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                        <div className="text-center">
-                          <div className="text-lg sm:text-xl font-bold text-blue-900">
-                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                              ? user.usage.daily.count 
-                              : 0
-                            }
-                          </div>
-                          <div className="text-xs sm:text-sm text-blue-700">Today's Questions</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 sm:p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                        <div className="text-center">
-                          <div className="text-lg sm:text-xl font-bold text-green-900">{user.progress.totalQuestions}</div>
-                          <div className="text-xs sm:text-sm text-green-700">Total Questions</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-xl">
-                  <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-blue-900 text-sm sm:text-base">Step-by-Step</h3>
-                  <p className="text-xs sm:text-sm text-blue-700">Every solution broken down clearly</p>
-                </div>
-                <div className="text-center p-3 sm:p-4 bg-green-50 rounded-xl">
-                  <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-green-900 text-sm sm:text-base">Australian Curriculum</h3>
-                  <p className="text-xs sm:text-sm text-green-700">Aligned with Curriculum v9.0</p>
-                </div>
-                <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-xl">
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 mx-auto mb-2" />
-                  <h3 className="font-semibold text-purple-900 text-sm sm:text-base">Learn Concepts</h3>
-                  <p className="text-xs sm:text-sm text-purple-700">Understand the 'why' behind each step</p>
-                </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Home View */}
+        {currentView === 'home' && (
+          <div className="space-y-8">
+            {/* Hero Section */}
+            <div className="text-center space-y-6">
+              <h1 className="text-4xl md:text-6xl font-bold text-gray-900">
+                Master Year 7 Mathematics with AI
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
+                Get step-by-step explanations designed for students grades 7-12. 
+                <span className="text-blue-600 font-semibold"> Math, Science, English, History</span> and more.
+              </p>
+              <div className="flex items-center justify-center space-x-2 text-green-600">
+                <span className="text-2xl">🇦🇺</span>
+                <span className="font-semibold">Australian Curriculum v9.0 Aligned</span>
               </div>
 
               {/* Assessment CTA */}
-              <div className="text-center mb-6">
-                <button
-                  onClick={() => setShowAssessmentQuiz(true)}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation mb-4"
-                >
-                  Take Free Assessment Quiz (2 minutes)
-                </button>
-                <p className="text-sm text-gray-600">Find your Year 7 Maths starting point</p>
-              </div>
-
-              {/* CTA Button - Mobile Optimized */}
-              <div className="text-center">
-                <button
-                  onClick={() => handleSubjectSelect(subjects.find(s => s.id === 'year7-mathematics')!)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl touch-manipulation"
-                >
-                  Start Your Year 7 Maths Journey
-                </button>
-              </div>
+              {!hasCompletedOnboarding && (
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-2xl p-6 max-w-2xl mx-auto">
+                  <div className="flex items-center justify-center space-x-3 mb-4">
+                    <Award className="h-6 w-6 text-green-600" />
+                    <h3 className="text-xl font-bold text-gray-900">Find Your Starting Point</h3>
+                  </div>
+                  <p className="text-gray-700 mb-4">
+                    Take our free 5-minute assessment to discover your strengths and get personalized learning recommendations.
+                  </p>
+                  <button
+                    onClick={handleStartAssessment}
+                    className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-blue-700 transition-all font-semibold"
+                  >
+                    Take Free Assessment Quiz
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Subject Grid - Mobile Optimized */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">All Subjects</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Subject Selection */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900 text-center">Choose Your Subject</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {subjects.map((subject) => (
                   <SubjectCard
                     key={subject.id}
                     subject={subject}
-                    isSelected={false}
+                    isSelected={selectedSubject?.id === subject.id}
                     onClick={() => handleSubjectSelect(subject)}
                   />
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Subject-Specific Interface (for non-math subjects) */}
-        {selectedSubject && selectedSubject.id !== 'year7-mathematics' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              {/* Subject Header */}
-              <div className={`${selectedSubject.bgColor} rounded-2xl shadow-sm border border-current p-4 sm:p-6`}>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                  <div className="flex items-center space-x-3 sm:space-x-4">
-                    <div className="bg-white p-2 sm:p-3 rounded-xl">
-                      <div className={`h-6 w-6 sm:h-8 sm:w-8 ${selectedSubject.color}`}>
-                        {/* Icon will be rendered by SubjectCard component logic */}
-                      </div>
-                    </div>
-                    <div>
-                      <h2 className={`text-xl sm:text-2xl font-bold ${selectedSubject.color}`}>
-                        {selectedSubject.name}
-                      </h2>
-                      <p className={`text-sm sm:text-base ${selectedSubject.color.replace('600', '700')}`}>
-                        {selectedSubject.description}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedSubject(null)}
-                    className={`px-3 sm:px-4 py-2 bg-white ${selectedSubject.color} rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base touch-manipulation`}
-                  >
-                    Change Subject
-                  </button>
-                </div>
-              </div>
-
-              {/* Question Input - Mobile Optimized */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <div className={`p-2 rounded-lg ${selectedSubject.bgColor} mr-3`}>
-                    <div className={`h-4 w-4 sm:h-5 sm:w-5 ${selectedSubject.color}`}></div>
-                  </div>
-                  Ask Your {selectedSubject.name} Question
-                  {useAI && aiConnectionStatus === 'connected' && user && (
-                    <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                      AI Powered
-                    </span>
-                  )}
-                </h3>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <textarea
-                    value={currentQuestion}
-                    onChange={(e) => setCurrentQuestion(e.target.value)}
-                    placeholder={`Type your ${selectedSubject.name.toLowerCase()} question here...`}
-                    className="w-full p-3 sm:p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
-                    rows={isMobile ? 3 : 4}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!currentQuestion.trim() || isLoading}
-                    className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 text-sm sm:text-base touch-manipulation`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent"></div>
-                        <span>
-                          {useAI && aiConnectionStatus === 'connected' && user
-                            ? 'AI is thinking...' 
-                            : 'Working through the steps...'
-                          }
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                        <span>Get Step-by-Step Solution</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-
-              {/* Smart Hints System */}
-              {currentQuestion && (
-                <SmartHintSystem
-                  question={currentQuestion}
-                  subject={selectedSubject.name}
-                  onHintUsed={handleHintUsed}
-                  onExplainConcept={handleExplainConcept}
-                  onShowAlternative={handleShowAlternative}
-                  onShowWhy={handleShowWhy}
-                  userProfile={user}
-                />
-              )}
-
-              {/* Step-by-Step Solution - Mobile Optimized */}
-              {currentSteps.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
-                    <div className="bg-green-100 p-2 rounded-lg mr-3">
-                      <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
-                    </div>
-                    Step-by-Step Solution
-                  </h3>
-                  
-                  <div className="space-y-3 sm:space-y-4">
-                    {currentSteps.map((step, index) => (
-                      <div key={step.number} className="relative">
-                        {/* Step Card - Mobile Optimized */}
-                        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 sm:p-6 border border-green-200">
-                          <div className="flex items-start space-x-3 sm:space-x-4">
-                            {/* Step Number */}
-                            <div className="flex-shrink-0">
-                              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs sm:text-sm">
-                                {step.number}
-                              </div>
-                            </div>
-                            
-                            {/* Step Content */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                                {step.title}
-                              </h4>
-                              <p className="text-sm sm:text-base text-gray-700 mb-3">
-                                {step.content}
-                              </p>
-                              
-                              {/* Formula/Calculation Display */}
-                              {step.formula && (
-                                <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200 mb-2">
-                                  <code className="text-blue-800 font-mono text-sm sm:text-lg whitespace-pre-line break-all">
-                                    {step.formula}
-                                  </code>
-                                </div>
-                              )}
-                              
-                              {step.calculation && (
-                                <div className="bg-green-100 rounded-lg p-3 sm:p-4 border border-green-300 mb-2">
-                                  <div className="flex items-center space-x-2">
-                                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
-                                    <code className="text-green-800 font-mono text-sm sm:text-lg font-semibold break-all">
-                                      {step.calculation}
-                                    </code>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {step.example && (
-                                <div className="bg-blue-100 rounded-lg p-3 sm:p-4 border border-blue-300">
-                                  <div className="flex items-start space-x-2">
-                                    <span className="text-blue-600 font-semibold text-xs sm:text-sm flex-shrink-0">Example:</span>
-                                    <span className="text-blue-800 text-xs sm:text-sm">{step.example}</span>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Connector Line */}
-                        {index < currentSteps.length - 1 && (
-                          <div className="flex justify-center py-2">
-                            <div className="w-0.5 h-4 sm:h-6 bg-gradient-to-b from-green-300 to-blue-300"></div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Key Learning Points */}
-                  {currentKeyPoints.length > 0 && (
-                    <div className="mt-6 sm:mt-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 sm:p-6 border border-purple-200">
-                      <h4 className="text-base sm:text-lg font-semibold text-purple-900 mb-4 flex items-center">
-                        <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 mr-2" />
-                        Key Learning Points
-                      </h4>
-                      <ul className="space-y-2">
-                        {currentKeyPoints.map((point, index) => (
-                          <li key={index} className="flex items-start space-x-3">
-                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-purple-800 text-sm sm:text-base">{point}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar - Mobile Optimized */}
-            <div className="space-y-4 sm:space-y-6">
-              {/* User Stats */}
-              {user && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Your Progress</h3>
-                  
-                  {/* Progress Stats Grid - Mobile Optimized */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-2 sm:p-3">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <Flame className="h-3 w-3 sm:h-4 sm:w-4 text-orange-600" />
-                        <div>
-                          <div className="text-sm sm:text-lg font-bold text-orange-900 flex items-center">
-                            {getStreakEmoji(user.progress.streakDays)}
-                            <span className="ml-1">{user.progress.streakDays}</span>
-                          </div>
-                          <div className="text-xs text-orange-700">Day Streak</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-2 sm:p-3">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <Target className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
-                        <div>
-                          <div className="text-sm sm:text-lg font-bold text-blue-900">
-                            {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                              ? user.usage.daily.count 
-                              : 0
-                            }
-                          </div>
-                          <div className="text-xs text-blue-700">Today</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-2 sm:p-3">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <Brain className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
-                        <div>
-                          <div className="text-sm sm:text-lg font-bold text-green-900">{user.progress.totalQuestions}</div>
-                          <div className="text-xs text-green-700">Total</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-2 sm:p-3">
-                      <div className="flex items-center space-x-1 sm:space-x-2">
-                        <div className="h-3 w-3 sm:h-4 sm:w-4 bg-purple-600 rounded-full"></div>
-                        <div>
-                          <div className="text-sm sm:text-lg font-bold text-purple-900">
-                            {Object.keys(user.progress.subjectStats).length}
-                          </div>
-                          <div className="text-xs text-purple-700">Subjects</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Usage Details */}
-                  <div className="space-y-2 sm:space-y-3 border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-gray-600">Daily Limit</span>
-                      <span className="font-semibold text-xs sm:text-sm">
-                        {user.usage.daily.date === new Date().toISOString().split('T')[0] 
-                          ? user.usage.daily.count 
-                          : 0
-                        } / {user.tier === 'unlimited' ? '∞' : user.tier === 'premium' ? '50' : '5'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {user.tier === 'free' && (
-                    <button
-                      onClick={() => setShowSubscriptionModal(true)}
-                      className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-xs sm:text-sm font-semibold touch-manipulation"
-                    >
-                      Upgrade for More Questions
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Sample Questions */}
+            {/* Sample Questions */}
+            {selectedSubject && selectedSubject.available && (
               <SampleQuestions
                 subject={selectedSubject}
-                onQuestionSelect={handleSampleQuestion}
+                onQuestionSelect={handleQuestionSelect}
               />
+            )}
 
-              {/* Question History - Mobile Optimized */}
-              {showHistory && questionHistory.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Recent Questions</h3>
-                  <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
-                    {questionHistory.slice(0, user?.tier === 'free' ? 10 : questionHistory.length).map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-2 sm:p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors touch-manipulation"
-                        onClick={() => loadFromHistory(item)}
-                      >
-                        <p className="text-xs sm:text-sm text-gray-800 line-clamp-2">{item.question}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                            {item.subject}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {item.timestamp.toLocaleDateString()}
-                          </span>
+            {/* Question Input */}
+            {selectedSubject && selectedSubject.available && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Ask Your {selectedSubject.name} Question
+                </h3>
+                <div className="space-y-4">
+                  <textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder={`Type your ${selectedSubject.name} question here...`}
+                    className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={4}
+                  />
+                  {error && (
+                    <div className={`text-sm flex items-center space-x-2 ${
+                      error.includes('AI service unavailable') ? 'text-yellow-700' : 'text-red-600'
+                    }`}>
+                      {error.includes('AI service unavailable') ? (
+                        <AlertTriangle className="h-4 w-4" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4" />
+                      )}
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleQuestionSubmit}
+                    disabled={!question.trim() || isLoading}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isLoading ? 'Generating Solution...' : 'Get Step-by-Step Solution'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Current Question Solution */}
+            {currentQuestion && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Solution</h3>
+                  <span className="text-sm text-gray-500">
+                    {currentQuestion.timestamp.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                  <h4 className="font-semibold text-blue-900 mb-2">Question:</h4>
+                  <p className="text-blue-800">{currentQuestion.question}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Step-by-Step Solution:</h4>
+                    <div className="space-y-4">
+                      {currentQuestion.steps.map((step) => (
+                        <div key={step.number} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start space-x-3">
+                            <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                              {step.number}
+                            </div>
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-gray-900 mb-2">{step.title}</h5>
+                              <p className="text-gray-700 mb-3">{step.content}</p>
+                              {step.formula && (
+                                <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                  <span className="text-sm font-medium text-gray-600">Formula: </span>
+                                  <code className="text-blue-600">{step.formula}</code>
+                                </div>
+                              )}
+                              {step.calculation && (
+                                <div className="bg-green-50 rounded-lg p-3">
+                                  <span className="text-sm font-medium text-gray-600">Calculation: </span>
+                                  <code className="text-green-700">{step.calculation}</code>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-yellow-900 mb-3">Key Learning Points:</h4>
+                    <ul className="space-y-2">
+                      {currentQuestion.keyPoints.map((point, index) => (
+                        <li key={index} className="flex items-start space-x-2">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-yellow-800">{point}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              )}
 
-              {/* Gamification Badges - Mobile Optimized */}
-              {user && (
-                <GamificationBadges userProfile={user} />
-              )}
-
-              {/* Educational Resources */}
-              <EducationalResources subject={selectedSubject?.id} />
-
-              {/* Study Tips - Mobile Optimized */}
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-sm border border-orange-100 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-orange-900 mb-4">Study Tips</h3>
-                <ul className="space-y-2 text-xs sm:text-sm text-orange-800">
-                  <li className="flex items-start">
-                    <span className="text-orange-600 mr-2">•</span>
-                    Follow each step carefully and understand why it's needed
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-orange-600 mr-2">•</span>
-                    Practice writing out the steps yourself
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-orange-600 mr-2">•</span>
-                    Always check your final answer makes sense
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-orange-600 mr-2">•</span>
-                    Try similar problems to reinforce the method
-                  </li>
-                </ul>
+                {/* Smart Hint System */}
+                {selectedSubject && (
+                  <div className="mt-6">
+                    <SmartHintSystem
+                      question={currentQuestion.question}
+                      subject={selectedSubject.name}
+                      onHintUsed={handleHintUsed}
+                      onExplainConcept={handleExplainConcept}
+                      onShowAlternative={handleShowAlternative}
+                      onShowWhy={handleShowWhy}
+                      userProfile={userProfile}
+                    />
+                  </div>
+                )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Mathematics View */}
+        {currentView === 'mathematics' && !selectedStrand && (
+          <div className="space-y-8">
+            <div className="text-center space-y-4">
+              <button
+                onClick={() => setCurrentView('home')}
+                className="text-blue-600 hover:text-blue-700 transition-colors mb-4"
+              >
+                ← Back to All Subjects
+              </button>
+              <h1 className="text-4xl font-bold text-gray-900">Year 7 Mathematics</h1>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Master the Australian Curriculum v9.0 with comprehensive coverage across all mathematics strands
+              </p>
+              <div className="flex items-center justify-center space-x-2 text-green-600">
+                <span className="text-2xl">🇦🇺</span>
+                <span className="font-semibold">Australian Curriculum v9.0 Aligned</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {year7MathStrands.map((strand) => (
+                <MathStrandCard
+                  key={strand.id}
+                  strand={strand}
+                  onSelect={() => handleStrandSelect(strand.id)}
+                />
+              ))}
             </div>
           </div>
         )}
-      </div>
+
+        {/* Mathematics Strand Detail View */}
+        {currentView === 'mathematics' && selectedStrand && (
+          <MathStrandDetail
+            strand={year7MathStrands.find(s => s.id === selectedStrand)!}
+            onBack={handleBackToMathematics}
+            onQuestionSelect={(question) => {
+              setQuestion(question);
+              setSelectedSubject(subjects.find(s => s.id === 'year7-mathematics')!);
+              setCurrentView('home');
+            }}
+          />
+        )}
+
+        {/* History View */}
+        {currentView === 'history' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-gray-900">Question History</h1>
+              <button
+                onClick={() => setCurrentView('home')}
+                className="text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                ← Back to Home
+              </button>
+            </div>
+
+            {questionHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No questions yet</h3>
+                <p className="text-gray-600">Start asking questions to see your history here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {questionHistory.map((q) => (
+                  <div key={q.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-2">{q.question}</h3>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <span>{q.subject}</span>
+                          <span>{q.timestamp.toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCurrentQuestion(q);
+                          setCurrentView('home');
+                        }}
+                        className="text-blue-600 hover:text-blue-700 transition-colors text-sm font-medium"
+                      >
+                        View Solution
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
 
       {/* Footer */}
       <Footer onNavigate={handleNavigate} />
 
+      {/* Mobile Navigation */}
+      <MobileNavigation
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        hasHistory={questionHistory.length > 0}
+        isAuthenticated={isAuthenticated}
+      />
+
       {/* Modals */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-      />
-
-      <SubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-        onSuccess={handleSubscriptionSuccess}
-      />
-
-      <ComingSoonModal
-        isOpen={showComingSoonModal}
-        onClose={() => setShowComingSoonModal(false)}
-        subjectName={comingSoonSubject?.name || ''}
-        availabilityDate={comingSoonSubject?.availabilityDate}
-      />
-
-      {user && (
-        <>
-          <UserProfileModal
-            isOpen={showUserProfile}
-            onClose={() => setShowUserProfile(false)}
-            userProfile={user}
-            onSignOut={handleSignOut}
-          />
-
-          <ProgressDashboard
-            isOpen={showProgressDashboard}
-            onClose={() => setShowProgressDashboard(false)}
-            userProfile={user}
-          />
-        </>
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       )}
 
-      {/* Assessment Quiz */}
-      <AssessmentQuiz
-        isOpen={showAssessmentQuiz}
-        onClose={() => setShowAssessmentQuiz(false)}
-        onComplete={handleAssessmentComplete}
-      />
+      {showUserProfile && userProfile && (
+        <UserProfileComponent
+          isOpen={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+          userProfile={userProfile}
+          onSignOut={handleSignOut}
+        />
+      )}
 
-      {/* Assessment Results */}
-      {assessmentResults && (
+      {showProgressDashboard && userProfile && (
+        <ProgressDashboard
+          userProfile={userProfile}
+          onClose={() => setShowProgressDashboard(false)}
+        />
+      )}
+
+      {showConceptExplainer && currentQuestion && selectedSubject && (
+        <ConceptExplainer
+          concept={currentQuestion.question}
+          subject={selectedSubject.name}
+          onClose={() => setShowConceptExplainer(false)}
+        />
+      )}
+
+      {showAlternativeSolution && currentQuestion && selectedSubject && (
+        <AlternativeSolutionModal
+          isOpen={showAlternativeSolution}
+          onClose={() => setShowAlternativeSolution(false)}
+          question={currentQuestion.question}
+          subject={selectedSubject.name}
+        />
+      )}
+
+      {showWhyItWorks && currentQuestion && selectedSubject && (
+        <WhyItWorksModal
+          isOpen={showWhyItWorks}
+          onClose={() => setShowWhyItWorks(false)}
+          concept={currentQuestion.question}
+          subject={selectedSubject.name}
+        />
+      )}
+
+      {showAssessmentQuiz && (
+        <AssessmentQuiz
+          isOpen={showAssessmentQuiz}
+          onClose={() => setShowAssessmentQuiz(false)}
+          onComplete={handleAssessmentComplete}
+        />
+      )}
+
+      {showAssessmentResults && assessmentResults && (
         <AssessmentResultsModal
           isOpen={showAssessmentResults}
           onClose={() => setShowAssessmentResults(false)}
@@ -1211,88 +880,13 @@ function App() {
         />
       )}
 
-      {/* Onboarding Flow */}
-      <OnboardingFlow
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-        onComplete={handleOnboardingComplete}
-      />
-
-      {/* Celebration Modal */}
-      {celebrationAchievement && (
-        <CelebrationModal
-          isOpen={showCelebration}
-          onClose={() => setShowCelebration(false)}
-          achievement={celebrationAchievement}
-          onShare={() => {}}
-          onDownloadCertificate={() => {}}
+      {showOnboarding && (
+        <OnboardingFlow
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onComplete={handleOnboardingComplete}
         />
       )}
-
-      {/* Badges Page */}
-      {user && (
-        <BadgesPage
-          isOpen={showBadgesPage}
-          onClose={() => setShowBadgesPage(false)}
-          userProfile={user}
-        />
-      )}
-
-      {/* Parent Features */}
-      <ParentSignup
-        isOpen={showParentSignup}
-        onClose={() => setShowParentSignup(false)}
-        onSuccess={() => {}}
-        childEmail={user?.email}
-      />
-
-      {user && (
-        <ParentDashboard
-          isOpen={showParentDashboard}
-          onClose={() => setShowParentDashboard(false)}
-          parentProfile={user}
-        />
-      )}
-
-      <ParentControls
-        isOpen={showParentControls}
-        onClose={() => setShowParentControls(false)}
-        childName={user?.displayName || 'Child'}
-        currentSettings={{
-          dailyGoal: 5,
-          weeklyGoal: 25,
-          difficultyLevel: 'adaptive',
-          emailNotifications: true,
-          weeklyReports: true,
-          achievementAlerts: true,
-          concernAlerts: true,
-          studyTimeLimit: 60,
-          allowedSubjects: ['Number', 'Algebra', 'Measurement', 'Space & Geometry', 'Statistics', 'Probability']
-        }}
-        onSave={() => {}}
-      />
-
-      {/* Smart Hints Modals */}
-      <ConceptExplainer
-        isOpen={showConceptExplainer}
-        onClose={() => setShowConceptExplainer(false)}
-        concept={currentConcept}
-        subject={selectedSubject?.name || 'Mathematics'}
-      />
-
-      <AlternativeSolutionModal
-        isOpen={showAlternativeSolution}
-        onClose={() => setShowAlternativeSolution(false)}
-        question={currentQuestion}
-        subject={selectedSubject?.name || 'Mathematics'}
-      />
-
-      <WhyItWorksModal
-        isOpen={showWhyItWorks}
-        onClose={() => setShowWhyItWorks(false)}
-        concept={currentConcept}
-        subject={selectedSubject?.name || 'Mathematics'}
-      />
     </div>
   );
 }
